@@ -1,0 +1,55 @@
+export type Role = "reporter" | "technician" | "admin";
+export type Status = "submitted" | "assigned" | "in_progress" | "resolved";
+export type Priority = "low" | "medium" | "high" | "urgent";
+export type BuildingType = "residence" | "academic" | "dining" | "athletic" | "other";
+
+export type Building = {
+  id: number;
+  name: string;
+  short_name: string | null;
+  type: BuildingType;
+};
+
+export type User = {
+  id: string;
+  name: string;
+  role: Role;
+  title: string | null;
+  is_demo: boolean;
+};
+
+/** A maintenance request. (Named Ticket so it doesn't clash with the built-in `Request` type.) */
+export type Ticket = {
+  id: number;
+  title: string;
+  description: string;
+  building_id: number;
+  location_detail: string;
+  category: string;
+  priority: Priority;
+  status: Status;
+  reporter_id: string;
+  assignee_id: string | null;
+  photo_url: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+};
+
+/** Ticket joined with the related rows most screens need. */
+export type TicketWithRelations = Ticket & {
+  building: Pick<Building, "id" | "name" | "short_name" | "type"> | null;
+  reporter: Pick<User, "id" | "name"> | null;
+  assignee: Pick<User, "id" | "name"> | null;
+};
+
+export type TicketEvent = {
+  id: number;
+  request_id: number;
+  actor_id: string | null;
+  from_status: Status | null;
+  to_status: Status;
+  note: string | null;
+  created_at: string;
+  actor: Pick<User, "id" | "name" | "role"> | null;
+};

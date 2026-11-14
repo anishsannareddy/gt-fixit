@@ -1,0 +1,81 @@
+"use server";
+
+import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/demo-auth";
+import { db } from "@/lib/supabase/server";
+import { CATEGORIES, PHOTO_BUCKET, PRIORITIES } from "@/lib/constants";
+import type { Priority } from "@/lib/types";
+
+/**
+ * Step 1 of a photo upload: the server creates a one-time signed upload URL.
+ * The browser then uploads the file straight to Supabase Storage, which avoids
+ * Vercel's ~4.5MB request body limit on server functions.
+ */
+export async function createPhotoUploadUrl() {
+  await requireUser();
+  const path = `requests/${randomUUID()}.jpg`;
+  const { data, error } = await db().storage.from(PHOTO_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return { error: error?.message ?? "Could not prepare upload" } as const;
+  return { path: data.path, token: data.token } as const;
+}
+
+export type ReportState = { error?: string; fieldErrors?: Record<string, string> } | undefined;
+
+export async function createRequest(_prev: ReportState, formData: FormData): Promise<ReportState> {
+  const user = await requireUser();
+
+  const get = (k: string) => String(formData.get(k) ?? "").trim();
+  const buildingId = Number(get("building_id"));
+  const title = get("title");
+  const description = get("description");
+  const locationDetail = get("location_detail");
+  const category = get("category");
+  const priority = get("priority") as Priority;
+  const photoPath = get("photo_path");
+
+  const fieldErrors: Record<string, string> = {};
+  if (!buildingId) fieldErrors.building_id = "Choose a building.";
+  if (title.length < 4) fieldErrors.title = "Add a short summary (at least 4 characters).";
+  if (title.length > 120) fieldErrors.title = "Keep the summary under 120 characters.";
+  if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) fieldErrors.category = "Pick a category.";
+  if (!PRIORITIES.includes(priority)) fieldErrors.priority = "Pick a priority.";
+  if (description.length > 2000) fieldErrors.description = "Description is too long.";
+  if (Object.keys(fieldErrors).length) return { fieldErrors };
+
+  // Only accept photo paths our own upload flow could have produced.
+  let photoUrl: string | null = null;
+  if (photoPath) {
+    if (!/^requests\/[0-9a-f-]{36}\.jpg$/.test(photoPath)) return { error: "Invalid photo upload." };
+    photoUrl = db().storage.from(PHOTO_BUCKET).getPublicUrl(photoPath).data.publicUrl;
+  }
+
+  const { data, error } = await db()
+    .from("requests")
+    .insert({
+      title,
+      description,
+      building_id: buildingId,
+      location_detail: locationDetail.slice(0, 120),
+      category,
+      priority,
+      reporter_id: user.id,
+      photo_url: photoUrl,
+    })
+    .select("id")
+    .single();
+  if (error || !data) return { error: error?.message ?? "Could not save your request." };
+
+  await db().from("request_events").insert({
+    request_id: data.id,
+    actor_id: user.id,
+    from_status: null,
+    to_status: "submitted",
+  });
+
+  revalidatePath("/my-requests");
+  revalidatePath("/tech");
+  revalidatePath("/admin");
+  redirect(`/requests/${data.id}?new=1`);
+}
