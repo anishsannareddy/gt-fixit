@@ -6,7 +6,7 @@ import { TICKET_SELECT } from "@/lib/data";
 import { OPEN_STATUSES } from "@/lib/constants";
 import type { TicketWithRelations } from "@/lib/types";
 import { EmptyState, RequestCard } from "@/components/RequestCard";
-import { PlusIcon } from "@/components/Icons";
+import { PlusIcon } from "@/components/ui/Icons";
 
 export const metadata: Metadata = { title: "My requests" };
 
@@ -38,11 +38,11 @@ export default async function MyRequestsPage(props: PageProps<"/my-requests">) {
     filter === "open" ? all.filter((t) => t.status !== "resolved") : filter === "resolved" ? all.filter((t) => t.status === "resolved") : all;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto w-full max-w-3xl px-4 pt-6 pb-32 md:px-6 md:pt-10 md:pb-16">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gt-navy md:text-3xl">My requests</h1>
-          <p className="mt-1 text-slate-600">Track everything you&apos;ve reported.</p>
+          <h1 className="font-display text-4xl font-bold tracking-tight md:text-5xl">My requests</h1>
+          <p className="mt-2 text-white/65">Track everything you&apos;ve reported.</p>
         </div>
         <Link href="/report" className="btn-gold hidden sm:inline-flex">
           <PlusIcon className="size-4" /> New request

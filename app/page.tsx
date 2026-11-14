@@ -5,7 +5,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { ROLE_META } from "@/lib/constants";
 import type { Role, User } from "@/lib/types";
 import { SetupNotice } from "@/components/SetupNotice";
-import { ChartIcon, PlusIcon, WrenchIcon } from "@/components/Icons";
+import { ChartIcon, PlusIcon, WrenchIcon } from "@/components/ui/Icons";
+import { Logo } from "@/components/ui/Logo";
 import { signInAs } from "./actions";
 
 const ROLE_ORDER: Role[] = ["reporter", "technician", "admin"];
@@ -28,11 +29,12 @@ export default async function Home() {
   }
 
   return (
-    <div className="space-y-8">
-      <section className="-mx-4 -mt-5 bg-gt-navy px-4 pt-8 pb-12 text-white md:-mt-8 md:rounded-b-3xl md:pt-12 md:pb-16">
+    <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-5 md:py-8">
+      <Logo />
+      <section className="px-4 pt-8 pb-12 text-white md:pt-12 md:pb-16">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-gt-gold">Georgia Tech Campus Maintenance</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-5xl">
+          <h1 className="mt-2 font-display text-4xl font-bold tracking-tight md:text-6xl">
             See it. Snap it. <span className="text-gt-gold">Get it fixed.</span>
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-white/80 md:text-lg">

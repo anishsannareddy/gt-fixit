@@ -6,7 +6,7 @@ import { getTechnicians, getTicket, getTicketEvents } from "@/lib/data";
 import { formatDateTime, formatHours, timeAgo } from "@/lib/format";
 import type { TicketWithRelations, User } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "@/components/Badges";
-import { ArrowLeftIcon, CheckIcon } from "@/components/Icons";
+import { ArrowLeftIcon, CheckIcon } from "@/components/ui/Icons";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { SubmitButton } from "@/components/SubmitButton";
 import { updateTicket } from "../actions";
@@ -35,8 +35,8 @@ export default async function RequestDetailPage(props: PageProps<"/requests/[id]
     : null;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-medium text-gt-navy hover:underline">
+    <div className="mx-auto w-full max-w-3xl space-y-4 px-4 pt-6 pb-32 md:px-6 md:pt-10 md:pb-16">
+      <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-medium text-gold-light hover:underline">
         <ArrowLeftIcon className="size-4" /> Back
       </Link>
 

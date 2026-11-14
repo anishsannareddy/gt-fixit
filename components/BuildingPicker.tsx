@@ -3,7 +3,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import type { Building } from "@/lib/types";
 import { BUILDING_TYPE_LABEL } from "@/lib/constants";
-import { BuildingIcon, SearchIcon, XIcon } from "./Icons";
+import { BuildingIcon, SearchIcon, XIcon } from "@/components/ui/Icons";
 
 /** Searchable building combobox. Submits the chosen id via a hidden input named `name`. */
 export function BuildingPicker({ buildings, name, error }: { buildings: Building[]; name: string; error?: string }) {

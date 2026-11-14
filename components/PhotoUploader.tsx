@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CameraIcon, XIcon } from "./Icons";
+import { CameraIcon, XIcon } from "@/components/ui/Icons";
 
 /**
  * Lets the user take/choose a photo and shows a preview.

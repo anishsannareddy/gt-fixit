@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { TicketWithRelations } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { PriorityBadge, StatusBadge } from "./Badges";
-import { ChevronRightIcon, PinIcon } from "./Icons";
+import { ChevronRightIcon, PinIcon } from "@/components/ui/Icons";
 
 export function RequestCard({
   ticket,

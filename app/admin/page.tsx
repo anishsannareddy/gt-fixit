@@ -9,7 +9,7 @@ import { STATUS_META } from "@/lib/constants";
 import { formatHours } from "@/lib/format";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { HBarChart } from "@/components/charts/HBarChart";
-import { AlertIcon } from "@/components/Icons";
+import { AlertIcon } from "@/components/ui/Icons";
 
 export const metadata: Metadata = { title: "Analytics" };
 
@@ -35,11 +35,11 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
   const statusTotal = a.statusCounts.reduce((s, x) => s + x.value, 0);
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-6xl space-y-5 px-4 pt-6 pb-32 md:px-6 md:pt-10 md:pb-16">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gt-navy md:text-3xl">Maintenance analytics</h1>
-          <p className="mt-1 text-slate-600">Campus-wide request activity · last {days} days</p>
+          <h1 className="font-display text-4xl font-bold tracking-tight md:text-5xl">Maintenance analytics</h1>
+          <p className="mt-2 text-white/65">Campus-wide request activity · last {days} days</p>
         </div>
         <nav className="flex rounded-xl bg-white p-1 ring-1 ring-slate-200" aria-label="Date range">
           {RANGES.map((r) => (

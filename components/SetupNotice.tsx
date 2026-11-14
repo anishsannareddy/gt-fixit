@@ -1,4 +1,4 @@
-import { AlertIcon } from "./Icons";
+import { AlertIcon } from "@/components/ui/Icons";
 
 /** Shown on the landing page when .env.local is missing or the DB hasn't been seeded. */
 export function SetupNotice({ problem }: { problem: "env" | "db"; detail?: string }) {
