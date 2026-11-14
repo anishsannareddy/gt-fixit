@@ -158,7 +158,7 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
         </Panel>
         <Panel title="Average time to resolve" subtitle="By category, for requests resolved in this range">
           {a.resolveByCategory.length ? (
-            <HBarChart data={a.resolveByCategory} seriesName="Avg. time" format={(v) => formatHours(v)} />
+            <HBarChart data={a.resolveByCategory} seriesName="Avg. time" unit="hours" />
           ) : (
             <Empty />
           )}

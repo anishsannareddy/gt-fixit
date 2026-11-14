@@ -3,6 +3,7 @@
 import { Bar, BarChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CHART } from "./theme";
 import { ChartTooltip } from "./ChartTooltip";
+import { formatHours } from "@/lib/format";
 
 type Row = { label: string; value: number; full?: string };
 
@@ -10,12 +11,14 @@ type Row = { label: string; value: number; full?: string };
 export function HBarChart({
   data,
   seriesName,
-  format = (v: number) => v.toLocaleString(),
+  unit = "count",
 }: {
   data: Row[];
   seriesName: string;
-  format?: (v: number) => string;
+  /** Plain data, not a function: functions can't be passed from Server to Client Components. */
+  unit?: "count" | "hours";
 }) {
+  const format = (v: number) => (unit === "hours" ? formatHours(v) : v.toLocaleString());
   const height = Math.max(160, data.length * 30 + 16);
   return (
     <div style={{ height }}>
