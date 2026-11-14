@@ -1,15 +1,14 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useActionState, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useActionState, useState, type FormEvent, type ReactNode } from "react";
 import { signInAs, signInWithEmail, type EmailSignInState } from "@/app/actions";
-import { CampusCanvas } from "@/components/campus/CampusCanvas";
+import { CampusCanvas, OsmCredit } from "@/components/campus/CampusCanvas";
 import { Button } from "@/components/ui/Button";
 import { FieldError, Input, Label } from "@/components/ui/Form";
 import { ArrowLeftIcon, ChartIcon, MailIcon, UserIcon, WrenchIcon } from "@/components/ui/Icons";
 import { Logo } from "@/components/ui/Logo";
 import { FadeIn } from "@/components/ui/Motion";
-import { buildCampus } from "@/lib/campus/layout";
 import type { Role, User } from "@/lib/types";
 
 const GT_EMAIL = /^[a-z0-9][a-z0-9._-]{1,40}@gatech\.edu$/i;
@@ -25,14 +24,13 @@ const CHIPS: { role: Role; label: string; Icon: typeof UserIcon; prefer: string 
  * in which case `notice` explains what to do).
  */
 export function Landing({ personas, notice }: { personas: User[]; notice?: ReactNode }) {
-  const campus = useMemo(() => buildCampus(), []);
   const [showForm, setShowForm] = useState(false);
 
   return (
     <div className="relative flex min-h-dvh flex-1 flex-col overflow-hidden">
       {/* 3D campus backdrop */}
       <div className="absolute inset-0">
-        <CampusCanvas buildings={campus} mode="hero" />
+        <CampusCanvas mode="hero" credit={false} />
       </div>
       {/* Darken where the text sits so the headline stays readable over the scene */}
       <div
@@ -112,6 +110,8 @@ export function Landing({ personas, notice }: { personas: User[]; notice?: React
           )}
         </div>
       </main>
+      {/* Map data credit, above the darkening overlay so it stays readable */}
+      <OsmCredit className="absolute top-20 right-5 z-10 md:top-auto md:right-4 md:bottom-4" />
     </div>
   );
 }

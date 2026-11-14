@@ -39,7 +39,12 @@ const ROOF: Record<CampusBuilding["type"], string> = {
 };
 const GOLD = new THREE.Color("#e8cf7a");
 const COOL = new THREE.Color("#17456e");
-const FOG = "#00182b";
+export const FOG = "#00182b";
+
+/**
+ * BLOCK CAMPUS (fallback). 45 hand-placed boxes from lib/campus/layout.ts.
+ * The real campus lives in RealCampusScene.tsx; this one is shown if that fails to load.
+ */
 
 /** Small deterministic random generator, so trees land in the same place on every render. */
 function prng(seed: number) {
@@ -204,14 +209,16 @@ function Block({
 }
 
 // ───────── camera ─────────
-function Rig({
+/** Camera rig shared by the real campus and this block fallback: overview, slow orbit, fly-to-target. */
+export function Rig({
   mode,
   target,
   panel,
   reducedMotion,
 }: {
   mode: CampusMode;
-  target: CampusBuilding | null;
+  /** Scene-unit position to fly to, or null for the overview. */
+  target: { x: number; z: number } | null;
   panel: "none" | "bottom" | "right";
   reducedMotion: boolean;
 }) {

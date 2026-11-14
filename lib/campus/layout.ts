@@ -64,11 +64,16 @@ const SPOTS: Record<string, Spot & { type: BuildingType }> = {
 };
 
 /** Campus centre: scene origin. */
-const ORIGIN = { lat: 33.7758, lng: -84.3975 };
+export const ORIGIN = { lat: 33.7758, lng: -84.3975 };
 const M_PER_DEG_LAT = 110_540;
 const M_PER_DEG_LNG = 111_320 * Math.cos((ORIGIN.lat * Math.PI) / 180);
 /** 1 scene unit = 10 metres. */
-const SCALE = 0.1;
+export const SCALE = 0.1;
+
+/** lat/lng → metres east (x) and south (z) of the campus centre. */
+export function toMetres(lat: number, lng: number): { x: number; z: number } {
+  return { x: (lng - ORIGIN.lng) * M_PER_DEG_LNG, z: -(lat - ORIGIN.lat) * M_PER_DEG_LAT };
+}
 /** Heights are exaggerated a little so the skyline reads from above. */
 const HEIGHT_SCALE = 0.16;
 
