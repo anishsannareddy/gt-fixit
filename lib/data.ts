@@ -5,7 +5,7 @@ import type { Building, TicketEvent, TicketWithRelations, User } from "./types";
 /** Select string that joins building, reporter and assignee onto a request. */
 export const TICKET_SELECT = `
   *,
-  building:buildings(id, name, short_name, type),
+  building:buildings(id, name, short_name, type, number),
   reporter:users!requests_reporter_id_fkey(id, name),
   assignee:users!requests_assignee_id_fkey(id, name)
 `;

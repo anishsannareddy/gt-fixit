@@ -18,3 +18,10 @@ Campus maintenance app for the Georgia Tech Campus Solutions Challenge. See READ
 
 ## Checks before finishing a change
 `npm run lint && npm run typecheck && npm run build`
+
+## 3D campus and maintenance areas
+- `data/campus.json`: OpenStreetMap footprints + roads (from `scripts/fetch-osm.ts`). `data/zones.json`: building → maintenance area, read off the GT Facilities zone map (`scripts/assign-zones.py`). Both are static and committed; nothing calls OSM at runtime.
+- Hand corrections go in `data/zone-overrides.json` (OSM id → `area` / `name` / `number`), never in the generated files. After changing it, run `npm run seed`.
+- `lib/campus/areas.ts` (area list, labels, colours; cheap to import) vs `lib/campus/zones.ts` (imports the big JSON; only import it in the 3D scene, server code, or scripts).
+- `components/campus/RealCampusScene.tsx` draws all buildings as ONE merged mesh; colours and picking work through per-building vertex ranges in `lib/campus/geometry.ts`. Use `CampusCanvas` to embed it (handles client-only loading and fallbacks).
+- A request's `area` is copied from its building in `createRequest`. The `buildings` table is loaded from the data files by the seed, keyed by `osm_id`.

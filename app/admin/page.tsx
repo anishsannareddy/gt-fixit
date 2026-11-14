@@ -10,6 +10,7 @@ import { formatHours } from "@/lib/format";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { HBarChart } from "@/components/charts/HBarChart";
 import { AlertIcon } from "@/components/ui/Icons";
+import { AdminCampusMap } from "@/components/campus/AdminCampusMap";
 
 export const metadata: Metadata = { title: "Analytics" };
 
@@ -32,6 +33,15 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
     getTechnicians(),
   ]);
   const a = computeAnalytics(rows, buildings, technicians, days);
+
+  // Open requests per building, keyed by OpenStreetMap id (how the 3D map identifies buildings).
+  const osmId = new Map(buildings.map((b) => [b.id, b.osm_id]));
+  const openByOsmId: Record<string, number> = {};
+  for (const r of rows) {
+    const id = osmId.get(r.building_id);
+    if (r.status !== "resolved" && id) openByOsmId[id] = (openByOsmId[id] ?? 0) + 1;
+  }
+  const maxOpen = Math.max(0, ...Object.values(openByOsmId));
   const statusTotal = a.statusCounts.reduce((s, x) => s + x.value, 0);
 
   return (
@@ -56,6 +66,8 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
           ))}
         </nav>
       </div>
+
+      <AdminCampusMap counts={openByOsmId} maxCount={maxOpen} />
 
       {/* KPI tiles */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Key metrics">

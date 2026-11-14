@@ -51,12 +51,17 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
     photoUrl = db().storage.from(PHOTO_BUCKET).getPublicUrl(photoPath).data.publicUrl;
   }
 
+  // Routing: the request inherits its building's maintenance area.
+  const { data: building } = await db().from("buildings").select("area").eq("id", buildingId).maybeSingle();
+  if (!building) return { fieldErrors: { building_id: "Choose a building." } };
+
   const { data, error } = await db()
     .from("requests")
     .insert({
       title,
       description,
       building_id: buildingId,
+      area: building.area,
       location_detail: locationDetail.slice(0, 120),
       category,
       priority,

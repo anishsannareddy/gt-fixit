@@ -1,3 +1,4 @@
+import { AREA_META, type Zone } from "@/lib/campus/areas";
 import type { Priority, Status } from "@/lib/types";
 import { cn } from "./cn";
 
@@ -43,6 +44,16 @@ export function Badge({ children, tone = "neutral", className }: { children: Rea
   return (
     <span className={cn(PILL, tone === "gold" ? "bg-gt-gold/20 text-gold-light ring-gt-gold/40" : "bg-white/8 text-white/75 ring-white/15", className)}>
       {children}
+    </span>
+  );
+}
+
+/** Maintenance area: colour dot plus the area name (never colour alone). */
+export function AreaBadge({ area, className }: { area: Zone; className?: string }) {
+  return (
+    <span className={cn(PILL, "bg-white/8 text-white/85 ring-white/15", className)}>
+      <span className="size-2 rounded-full ring-1 ring-white/30" style={{ background: AREA_META[area].color }} aria-hidden="true" />
+      {AREA_META[area].label}
     </span>
   );
 }

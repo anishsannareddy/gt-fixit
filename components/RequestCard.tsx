@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { TicketWithRelations } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
+import { AREA_META } from "@/lib/campus/areas";
 import { PriorityBadge, StatusBadge } from "./Badges";
 import { ChevronRightIcon, PinIcon } from "@/components/ui/Icons";
 
@@ -38,7 +39,7 @@ export function RequestCard({
             </span>
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            {ticket.category} · {timeAgo(ticket.created_at)}
+            {AREA_META[ticket.area]?.label ?? ticket.area} · {ticket.category} · {timeAgo(ticket.created_at)}
             {showReporter && ticket.reporter ? ` · by ${ticket.reporter.name}` : ""}
             {showAssignee ? ` · ${ticket.assignee ? `→ ${ticket.assignee.name}` : "Unassigned"}` : ""}
           </p>

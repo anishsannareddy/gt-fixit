@@ -8,12 +8,19 @@ drop table if exists requests cascade;
 drop table if exists users cascade;
 drop table if exists buildings cascade;
 
--- Campus buildings and residence halls
+-- GT buildings (from OpenStreetMap footprints + the GT Facilities maintenance-area map).
+-- Loaded by `npm run seed` from data/campus.json + data/zones.json.
 create table buildings (
   id          bigint generated always as identity primary key,
   name        text not null unique,
   short_name  text,
-  type        text not null check (type in ('residence', 'academic', 'dining', 'athletic', 'other'))
+  type        text not null check (type in ('residence', 'academic', 'dining', 'athletic', 'other')),
+  number      text,                 -- GT building number, when known
+  -- GT Facilities maintenance area that looks after this building
+  area        text not null check (area in ('area1', 'area2', 'area3', 'area4', 'area5', 'area6', 'gtaa', 'housing', 'parking')),
+  lat         double precision,
+  lng         double precision,
+  osm_id      text unique           -- OpenStreetMap id; links the row to its 3D footprint
 );
 
 -- Demo personas (real GT SSO would replace this later)
@@ -33,6 +40,8 @@ create table requests (
   description      text not null default '',
   building_id      bigint not null references buildings(id),
   location_detail  text not null default '',
+  -- Maintenance area, copied from the building when the request is created (used for routing)
+  area             text not null check (area in ('area1', 'area2', 'area3', 'area4', 'area5', 'area6', 'gtaa', 'housing', 'parking')),
   category         text not null,
   priority         text not null check (priority in ('low', 'medium', 'high', 'urgent')),
   status           text not null default 'submitted'
@@ -61,6 +70,7 @@ create index requests_building_idx   on requests (building_id);
 create index requests_created_idx    on requests (created_at);
 create index requests_assignee_idx   on requests (assignee_id);
 create index requests_reporter_idx   on requests (reporter_id);
+create index requests_area_idx       on requests (area);
 create index request_events_req_idx  on request_events (request_id);
 
 -- Row Level Security ON with no policies = the public/anon key can't read or write

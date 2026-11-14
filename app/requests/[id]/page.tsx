@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/demo-auth";
 import { getTechnicians, getTicket, getTicketEvents } from "@/lib/data";
 import { formatDateTime, formatHours, timeAgo } from "@/lib/format";
+import { AREA_META } from "@/lib/campus/areas";
 import type { TicketWithRelations, User } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "@/components/Badges";
 import { ArrowLeftIcon, CheckIcon } from "@/components/ui/Icons";
@@ -58,9 +59,10 @@ export default async function RequestDetailPage(props: PageProps<"/requests/[id]
             <span className="ml-auto font-mono text-sm text-slate-500">#{ticket.id}</span>
           </div>
           <h1 className="mt-3 text-2xl font-bold text-gt-navy">{ticket.title}</h1>
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-3">
-            <Info label="Building" value={ticket.building?.name ?? "—"} />
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-3 lg:grid-cols-4">
+            <Info label="Building" value={`${ticket.building?.name ?? "—"}${ticket.building?.number ? ` (#${ticket.building.number})` : ""}`} />
             <Info label="Location" value={ticket.location_detail || "—"} />
+            <Info label="Maintenance area" value={AREA_META[ticket.area]?.label ?? ticket.area} />
             <Info label="Category" value={ticket.category} />
             <Info label="Reported" value={`${timeAgo(ticket.created_at)} by ${ticket.reporter?.name ?? "—"}`} />
             <Info label="Assigned to" value={ticket.assignee?.name ?? "Not yet assigned"} />

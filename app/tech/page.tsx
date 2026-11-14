@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/demo-auth";
 import { db } from "@/lib/supabase/server";
 import { getBuildings, TICKET_SELECT } from "@/lib/data";
 import { CATEGORIES, OPEN_STATUSES, PRIORITIES, PRIORITY_META, PRIORITY_RANK } from "@/lib/constants";
+import { AREAS, AREA_META } from "@/lib/campus/areas";
 import type { TicketWithRelations, User } from "@/lib/types";
 import { EmptyState, RequestCard } from "@/components/RequestCard";
 import { FilterSelect } from "@/components/FilterSelect";
@@ -58,8 +59,10 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
   const building = str("building");
   const category = str("category");
   const priority = str("priority");
+  const area = str("area");
   const shown = byTab[tab].filter(
     (t) =>
+      (!area || t.area === area) &&
       (!building || String(t.building_id) === building) &&
       (!category || t.category === category) &&
       (!priority || t.priority === priority),
@@ -109,10 +112,11 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
 
       <Suspense>
         <div className="mt-3 flex flex-wrap gap-2">
+          <FilterSelect param="area" label="Area" options={AREAS.map((a) => ({ value: a, label: AREA_META[a].label }))} />
           <FilterSelect
             param="building"
             label="Building"
-            options={buildings.map((b) => ({ value: String(b.id), label: b.short_name ?? b.name }))}
+            options={buildings.filter((b) => !area || b.area === area).map((b) => ({ value: String(b.id), label: b.name }))}
           />
           <FilterSelect param="category" label="Category" options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
           <FilterSelect param="priority" label="Priority" options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_META[p].label }))} />
