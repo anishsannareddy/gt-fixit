@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
-import { PRIORITIES, PRIORITY_META, STATUSES, STATUS_META } from "@/lib/constants";
+import { PHOTO_BUCKET, PRIORITIES, PRIORITY_META, STATUSES, STATUS_META } from "@/lib/constants";
+import { canDeleteRequest, photoPathFromUrl } from "@/lib/permissions";
 import type { Priority, Status, User } from "@/lib/types";
 
 /**
@@ -234,4 +235,32 @@ export async function setVisibility(id: number, visibility: "public" | "private"
   revalidatePath("/issues");
   revalidatePath("/report");
   return { ok: true, message: visibility === "private" ? "Now private: only you and maintenance staff can see it." : "Now public: it shows in Active issues." };
+}
+
+/**
+ * Permanently delete a request (students: their own, before work starts; admins: any).
+ * One database transaction (delete_request in migration 002) removes the request, its history,
+ * and its issue-group membership (an emptied group goes with its votes), and writes a minimal
+ * audit row. Then the photo is removed from Storage and every page that lists requests is refreshed.
+ */
+export async function deleteRequest(id: number): Promise<ActionResult & { redirectTo?: string }> {
+  const user = await requireUser(["reporter", "admin"]);
+  if (!Number.isInteger(id) || id <= 0) return fail("Request not found.");
+  const { data: t } = await db().from("requests").select("id, status, reporter_id").eq("id", id).maybeSingle<{ id: number; status: Status; reporter_id: string }>();
+  if (!t) return fail("This request was already removed.");
+  if (!canDeleteRequest(user, t)) {
+    return fail(user.role === "reporter" && t.reporter_id === user.id ? "Work has already started on this request, so it can't be deleted." : "You can't delete this request.");
+  }
+
+  const { data, error } = await db().rpc("delete_request", { p_id: id, p_actor: user.id, p_role: user.role });
+  if (error) return fail(/delete_request/.test(error.message) ? "Deleting needs the latest database update (supabase/migrations/002_visibility_review_delete.sql)." : error.message);
+  const row = (Array.isArray(data) ? data[0] : data) as { photo_url: string | null } | undefined;
+  const path = photoPathFromUrl(row?.photo_url ?? null, PHOTO_BUCKET);
+  if (path) await db().storage.from(PHOTO_BUCKET).remove([path]);
+
+  revalidateAll(id);
+  revalidatePath("/issues");
+  revalidatePath("/report");
+  revalidatePath("/admin/analytics");
+  return { ok: true, message: `Request #${id} was deleted.`, redirectTo: user.role === "admin" ? "/admin" : "/my-requests" };
 }

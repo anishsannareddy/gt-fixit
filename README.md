@@ -192,3 +192,8 @@ proxy.ts                 Refreshes the sign-in session; logged-out visitors go t
 
 ### Building names
 Building names, areas and search aliases come from `data/campus.json` + `data/zones.json`, corrected in `data/zone-overrides.json` (see `data/building-name-changes.md`). `npm run buildings:sync` updates the live `buildings` table in place; building ids never change, so existing requests keep their building.
+
+### Deleting requests
+- Students can delete their own request while it's Submitted or Assigned. Admins can delete any request (spam, duplicates, mistakes). Technicians can't. The server enforces this (`lib/permissions.ts`).
+- Deleting is permanent and happens in one database transaction (`delete_request()` in migration 002). It removes the request, its history, its issue-group membership (an emptied group goes, along with its votes), and its photo in Storage.
+- Only a minimal audit row is kept in `deletion_log`: the request id, who deleted it, their role and the time. Old links show "This request was removed".
