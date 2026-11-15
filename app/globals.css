@@ -1,16 +1,47 @@
 @import "tailwindcss";
 
-/* Georgia Tech brand tokens → usable as bg-gt-navy, text-gt-gold, etc. */
+/* ───────── Design tokens ─────────
+   Georgia Tech navy + Tech Gold. Text uses ink / ink-muted / gold-ink (all pass WCAG AA); gt-gold is a fill only. */
 @theme {
+  /* Brand */
   --color-gt-navy: #003057;
+  --color-navy-950: #00111f;
+  --color-navy-900: #001a30;
+  --color-navy-800: #002443;
+  --color-navy-600: #0f3f6a;
+  --color-navy-500: #1d4e7a;
+  --color-navy-300: #7fa3c4;
+  --color-navy-100: #d6e2ee;
+  --color-navy-50: #edf2f8;
+  --color-gt-gold: #b3a369; /* fill / accent only: fails as text on white (2.4:1) */
+  --color-gold-light: #e9e1c2;
+  --color-gold-50: #f7f4ea;
+  --color-gold-dark: #8a7b45;
+
+  /* Text (all pass WCAG AA on white and on the page background) */
+  --color-ink: #003057; /* main text: navy, 12.4:1 on white */
+  --color-ink-muted: #4a5d72; /* secondary text, 6.5:1 */
+  --color-gold-ink: #6e6233; /* gold-coloured text, 6.0:1 */
+  --color-signal: #0e7490; /* Command Center accent, 5.4:1 */
+
+  /* Surfaces */
+  --color-page: #f5f7fa;
+  --color-line: #dfe5ec;
+  /* form-field borders: 3:1 against white, as WCAG asks for input boundaries */
+  --color-field: #7a8a9e;
+
+  /* legacy tokens used by older light pages */
   --color-gt-navy-700: #00223d;
   --color-gt-navy-50: #e8eef4;
-  --color-gt-gold: #b3a369;
-  --color-gt-gold-dark: #8a7b45; /* darker gold for text on white (better contrast) */
+  --color-gt-gold-dark: #6e6233;
   --color-gt-gold-50: #f7f4ea;
-  --color-surface: #f7f7f5;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --shadow-glow: 0 10px 30px -12px rgb(179 163 105 / 0.75);
+  --shadow-panel: 0 18px 50px -24px rgb(0 48 87 / 0.35), 0 2px 6px -2px rgb(0 48 87 / 0.08);
 }
 
 :root {
@@ -18,25 +49,58 @@
 }
 
 body {
-  background: var(--color-surface);
-  color: #111827;
+  background: var(--color-page);
+  color: var(--color-ink);
 }
 
-/* Leave room for the iPhone home indicator under the bottom tab bar */
-.pb-safe {
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+::selection {
+  background: rgb(179 163 105 / 0.4);
 }
 
-/* Shared component styles. Declared with @utility so they work with variants and @apply. */
-/* Inputs: 16px font prevents iOS Safari from zooming in on focus */
+/* ───────── Backgrounds ───────── */
+/* "Campus" look: very light gray with a faint sky-blue and gold wash */
+@utility bg-campus {
+  background:
+    radial-gradient(110% 55% at 50% -10%, rgb(214 226 238 / 0.9), transparent 65%),
+    radial-gradient(50% 35% at 90% 105%, rgb(179 163 105 / 0.12), transparent 70%),
+    #f5f7fa;
+}
+/* "Command Center" look: light with faint grid lines */
+@utility bg-command {
+  background:
+    linear-gradient(rgb(0 48 87 / 0.04) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgb(0 48 87 / 0.04) 1px, transparent 1px) 0 0 / 32px 32px,
+    #f3f6f9;
+}
+
+/* ───────── Surfaces ───────── */
+@utility glass {
+  @apply border border-line bg-white/80 backdrop-blur-xl;
+}
+@utility glass-strong {
+  @apply border border-line bg-white/95 backdrop-blur-2xl;
+}
+
+/* Room for the iPhone home indicator */
+@utility pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* Thin scrollbars inside panels */
+@utility scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 48 87 / 0.2) transparent;
+}
+
+/* ───────── Legacy component styles (old light cards; removed in Phase 6) ───────── */
 @utility field {
-  @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-gt-navy focus:ring-2 focus:ring-gt-navy/20;
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-base text-ink shadow-sm outline-none transition placeholder:text-slate-500 focus:border-gt-navy focus:ring-2 focus:ring-gt-navy/20;
 }
 @utility label {
-  @apply mb-1.5 block text-sm font-semibold text-slate-800;
+  @apply mb-1.5 block text-sm font-semibold text-ink;
 }
 @utility card {
-  @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+  @apply rounded-2xl border border-line bg-white text-ink shadow-sm;
 }
 @utility btn {
   @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;

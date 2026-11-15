@@ -1,0 +1,815 @@
+{
+ "source": "GT Facilities Maintenance Areas web map (screenshot), sampled by scripts/assign-zones.py",
+ "generated": "2026-11-14",
+ "legend": {
+  "area1": "#ee7bda",
+  "area2": "#59c2f9",
+  "area3": "#ea3323",
+  "area4": "#5aa630",
+  "area5": "#f3ae3d",
+  "area6": "#8afc4d",
+  "gtaa": "#1e4ca2",
+  "housing": "#ffff54",
+  "parking": "#643f95",
+  "non_gt": "#9c9c9c"
+ },
+ "alignment": {
+  "metres_per_pixel": 1.9794,
+  "rotation_deg": -3.3,
+  "fit": 0.914
+ },
+ "zones": {
+  "r302115": {
+   "area": "area4",
+   "conf": 0.99
+  },
+  "r3156682_1": {
+   "area": "gtaa",
+   "conf": 0.95
+  },
+  "r3156682_2": {
+   "area": "gtaa",
+   "conf": 1.0
+  },
+  "r3178620": {
+   "area": "area4",
+   "conf": 0.99
+  },
+  "r3178621": {
+   "area": "area1",
+   "conf": 0.96
+  },
+  "r3178622": {
+   "area": "area4",
+   "conf": 0.93
+  },
+  "r3178624_0": {
+   "area": "area3",
+   "conf": 0.98
+  },
+  "r3178624_1": {
+   "area": "area3",
+   "conf": 0.99
+  },
+  "r3178625": {
+   "area": "area4",
+   "conf": 1.0
+  },
+  "r3178627": {
+   "area": "area4",
+   "conf": 0.98
+  },
+  "r3178630": {
+   "area": "area4",
+   "conf": 0.99
+  },
+  "r3249306": {
+   "area": "housing",
+   "conf": 0.98
+  },
+  "r3249307": {
+   "area": "housing",
+   "conf": 0.94
+  },
+  "r3321073": {
+   "area": "area5",
+   "conf": 0.94
+  },
+  "r3321074": {
+   "area": "parking",
+   "conf": 0.99
+  },
+  "r4041025": {
+   "area": "housing",
+   "conf": 0.98
+  },
+  "r4041026": {
+   "area": "housing",
+   "conf": 0.89
+  },
+  "r4578449": {
+   "area": "area4",
+   "conf": 0.99
+  },
+  "r4578450": {
+   "area": "area4",
+   "conf": 1.0
+  },
+  "w1021745205": {
+   "area": "area4",
+   "conf": 0.99
+  },
+  "w1258398253": {
+   "area": "area2",
+   "conf": 0.73
+  },
+  "w128304221": {
+   "area": "non_gt",
+   "conf": 0.95
+  },
+  "w177021936": {
+   "area": "area4",
+   "conf": 0.83
+  },
+  "w178658172": {
+   "area": "housing",
+   "conf": 0.67
+  },
+  "w178658173": {
+   "area": "housing",
+   "conf": 0.69
+  },
+  "w178658174": {
+   "area": "housing",
+   "conf": 0.96
+  },
+  "w178716337": {
+   "area": "gtaa",
+   "conf": 1.0
+  },
+  "w178717765": {
+   "area": "housing",
+   "conf": 0.9
+  },
+  "w178717766": {
+   "area": "housing",
+   "conf": 0.87
+  },
+  "w178717767": {
+   "area": "housing",
+   "conf": 0.91
+  },
+  "w179047236": {
+   "area": "area5",
+   "conf": 0.96
+  },
+  "w179212361": {
+   "area": "area4",
+   "conf": 0.97
+  },
+  "w179213909": {
+   "area": "area5",
+   "conf": 0.95
+  },
+  "w179220688": {
+   "area": "area3",
+   "conf": 0.94
+  },
+  "w179223077": {
+   "area": "area3",
+   "conf": 0.98
+  },
+  "w179224195": {
+   "area": "area1",
+   "conf": 0.99
+  },
+  "w245699027": {
+   "area": "gtaa",
+   "conf": 1.0
+  },
+  "w270006355": {
+   "area": "area5",
+   "conf": 0.95
+  },
+  "w270006574": {
+   "area": "area5",
+   "conf": 0.92
+  },
+  "w367735715": {
+   "area": "area1",
+   "conf": 1.0
+  },
+  "w42706121": {
+   "area": "area3",
+   "conf": 0.99
+  },
+  "w42706123": {
+   "area": "area3",
+   "conf": 1.0
+  },
+  "w42706125": {
+   "area": "area3",
+   "conf": 0.99
+  },
+  "w42706129": {
+   "area": "area3",
+   "conf": 0.97
+  },
+  "w42706130": {
+   "area": "area3",
+   "conf": 0.92
+  },
+  "w42706131": {
+   "area": "area3",
+   "conf": 1.0
+  },
+  "w42706132": {
+   "area": "area3",
+   "conf": 0.98
+  },
+  "w42706134": {
+   "area": "area3",
+   "conf": 0.98
+  },
+  "w42706659": {
+   "area": "parking",
+   "conf": 0.99
+  },
+  "w42706678": {
+   "area": "area4",
+   "conf": 0.81
+  },
+  "w42706679": {
+   "area": "area4",
+   "conf": 0.77
+  },
+  "w42706681": {
+   "area": "area4",
+   "conf": 0.66
+  },
+  "w42706690": {
+   "area": "area4",
+   "conf": 1.0
+  },
+  "w42706702": {
+   "area": "area4",
+   "conf": 0.96
+  },
+  "w42706703": {
+   "area": "area4",
+   "conf": 0.95
+  },
+  "w42706705": {
+   "area": "area4",
+   "conf": 0.97
+  },
+  "w42706709": {
+   "area": "area4",
+   "conf": 0.98
+  },
+  "w42706710": {
+   "area": "area4",
+   "conf": 0.84
+  },
+  "w42706711": {
+   "area": "area4",
+   "conf": 0.95
+  },
+  "w42706712": {
+   "area": "gtaa",
+   "conf": 0.99
+  },
+  "w42706714": {
+   "area": "area4",
+   "conf": 1.0
+  },
+  "w42706715": {
+   "area": "parking",
+   "conf": 0.98
+  },
+  "w42706716": {
+   "area": "area4",
+   "conf": 0.87
+  },
+  "w42706740": {
+   "area": "housing",
+   "conf": 0.75
+  },
+  "w42706741": {
+   "area": "housing",
+   "conf": 0.93
+  },
+  "w42706743": {
+   "area": "housing",
+   "conf": 0.66
+  },
+  "w42706747": {
+   "area": "area4",
+   "conf": 0.95
+  },
+  "w42706750": {
+   "area": "housing",
+   "conf": 0.71
+  },
+  "w42706752": {
+   "area": "housing",
+   "conf": 0.91
+  },
+  "w42706759": {
+   "area": "housing",
+   "conf": 0.9
+  },
+  "w42706760": {
+   "area": "housing",
+   "conf": 0.94
+  },
+  "w42706762": {
+   "area": "housing",
+   "conf": 0.87
+  },
+  "w42706769": {
+   "area": "housing",
+   "conf": 0.71
+  },
+  "w42706770": {
+   "area": "housing",
+   "conf": 0.81
+  },
+  "w42706772": {
+   "area": "housing",
+   "conf": 0.86
+  },
+  "w42706775": {
+   "area": "housing",
+   "conf": 0.9
+  },
+  "w42706824": {
+   "area": "non_gt",
+   "conf": 0.97
+  },
+  "w42706834": {
+   "area": "area5",
+   "conf": 0.95
+  },
+  "w42706863": {
+   "area": "area5",
+   "conf": 0.83
+  },
+  "w42725820": {
+   "area": "area5",
+   "conf": 0.92
+  },
+  "w42726100": {
+   "area": "area5",
+   "conf": 0.99
+  },
+  "w42726177": {
+   "area": "area5",
+   "conf": 0.97
+  },
+  "w42726189": {
+   "area": "gtaa",
+   "conf": 0.95
+  },
+  "w42726396": {
+   "area": "gtaa",
+   "conf": 0.92
+  },
+  "w42726481": {
+   "area": "gtaa",
+   "conf": 0.95
+  },
+  "w42726571": {
+   "area": "gtaa",
+   "conf": 0.97
+  },
+  "w42726641": {
+   "area": "gtaa",
+   "conf": 1.0
+  },
+  "w42726645": {
+   "area": "gtaa",
+   "conf": 0.99
+  },
+  "w42726695": {
+   "area": "area5",
+   "conf": 0.96
+  },
+  "w42726698": {
+   "area": "parking",
+   "conf": 0.93
+  },
+  "w42726829": {
+   "area": "parking",
+   "conf": 0.97
+  },
+  "w42726877": {
+   "area": "housing",
+   "conf": 0.86
+  },
+  "w42727160": {
+   "area": "housing",
+   "conf": 0.94
+  },
+  "w42727187": {
+   "area": "housing",
+   "conf": 0.91
+  },
+  "w42792936": {
+   "area": "non_gt",
+   "conf": 0.77
+  },
+  "w42795190": {
+   "area": "housing",
+   "conf": 0.9
+  },
+  "w42795626": {
+   "area": "housing",
+   "conf": 0.92
+  },
+  "w42795946": {
+   "area": "housing",
+   "conf": 0.91
+  },
+  "w42796148": {
+   "area": "housing",
+   "conf": 0.92
+  },
+  "w42796721": {
+   "area": "area2",
+   "conf": 0.96
+  },
+  "w42796728": {
+   "area": "area2",
+   "conf": 0.97
+  },
+  "w42796745": {
+   "area": "area2",
+   "conf": 0.99
+  },
+  "w42796800": {
+   "area": "area2",
+   "conf": 0.99
+  },
+  "w42796811": {
+   "area": "parking",
+   "conf": 0.99
+  },
+  "w42796835": {
+   "area": "area3",
+   "conf": 0.97
+  },
+  "w42821538": {
+   "area": "area1",
+   "conf": 0.99
+  },
+  "w42822023": {
+   "area": "housing",
+   "conf": 0.97
+  },
+  "w42822497": {
+   "area": "housing",
+   "conf": 0.91
+  },
+  "w42822878": {
+   "area": "housing",
+   "conf": 0.9
+  },
+  "w42825379": {
+   "area": "area5",
+   "conf": 0.95
+  },
+  "w42825580": {
+   "area": "housing",
+   "conf": 0.96
+  },
+  "w42825621": {
+   "area": "housing",
+   "conf": 0.99
+  },
+  "w42825663": {
+   "area": "parking",
+   "conf": 0.99
+  },
+  "w42825797": {
+   "area": "area1",
+   "conf": 0.95
+  },
+  "w42825900": {
+   "area": "housing",
+   "conf": 0.95
+  },
+  "w42829998": {
+   "area": "area3",
+   "conf": 0.98
+  },
+  "w42830543": {
+   "area": "area4",
+   "conf": 0.97
+  },
+  "w42830610": {
+   "area": "area4",
+   "conf": 0.97
+  },
+  "w42830641": {
+   "area": "area4",
+   "conf": 0.9
+  },
+  "w42830677": {
+   "area": "area4",
+   "conf": 0.91
+  },
+  "w42831047": {
+   "area": "area4",
+   "conf": 0.95
+  },
+  "w42831050": {
+   "area": "area4",
+   "conf": 0.98
+  },
+  "w42831079": {
+   "area": "area4",
+   "conf": 0.97
+  },
+  "w42831083": {
+   "area": "area4",
+   "conf": 0.89
+  },
+  "w42831367": {
+   "area": "area1",
+   "conf": 0.99
+  },
+  "w42834630": {
+   "area": "area5",
+   "conf": 0.91
+  },
+  "w42872499": {
+   "area": "area1",
+   "conf": 0.97
+  },
+  "w42872500": {
+   "area": "area1",
+   "conf": 1.0
+  },
+  "w42872520": {
+   "area": "parking",
+   "conf": 0.97
+  },
+  "w42872533": {
+   "area": "housing",
+   "conf": 0.91
+  },
+  "w42872564": {
+   "area": "housing",
+   "conf": 0.91
+  },
+  "w42872573": {
+   "area": "housing",
+   "conf": 0.81
+  },
+  "w42872575": {
+   "area": "housing",
+   "conf": 0.97
+  },
+  "w42872589": {
+   "area": "housing",
+   "conf": 0.97
+  },
+  "w42872604": {
+   "area": "housing",
+   "conf": 0.9
+  },
+  "w42872633": {
+   "area": "area1",
+   "conf": 0.97
+  },
+  "w42872634": {
+   "area": "area1",
+   "conf": 0.74
+  },
+  "w42872637": {
+   "area": "area1",
+   "conf": 0.95
+  },
+  "w42872649": {
+   "area": "area1",
+   "conf": 0.97
+  },
+  "w42872682": {
+   "area": "area1",
+   "conf": 0.99
+  },
+  "w42872689": {
+   "area": "area1",
+   "conf": 0.99
+  },
+  "w42877787": {
+   "area": "gtaa",
+   "conf": 1.0
+  },
+  "w42877900": {
+   "area": "gtaa",
+   "conf": 0.97
+  },
+  "w43212470": {
+   "area": "area5",
+   "conf": 0.98
+  },
+  "w43329453": {
+   "area": "non_gt",
+   "conf": 0.9
+  },
+  "w43330347": {
+   "area": "area5",
+   "conf": 0.88
+  },
+  "w43330481": {
+   "area": "area1",
+   "conf": 0.97
+  },
+  "w43330499": {
+   "area": "housing",
+   "conf": 0.93
+  },
+  "w43330545": {
+   "area": "housing",
+   "conf": 0.97
+  },
+  "w43330596": {
+   "area": "housing",
+   "conf": 0.92
+  },
+  "w43330604": {
+   "area": "area2",
+   "conf": 0.93
+  },
+  "w43330608": {
+   "area": "area2",
+   "conf": 1.0
+  },
+  "w43331393": {
+   "area": "area2",
+   "conf": 1.0
+  },
+  "w43331406": {
+   "area": "area2",
+   "conf": 0.98
+  },
+  "w43331463": {
+   "area": "area2",
+   "conf": 1.0
+  },
+  "w43331465": {
+   "area": "area2",
+   "conf": 0.99
+  },
+  "w43331472": {
+   "area": "area2",
+   "conf": 1.0
+  },
+  "w43331474": {
+   "area": "area2",
+   "conf": 0.96
+  },
+  "w43331479": {
+   "area": "area2",
+   "conf": 0.95
+  },
+  "w43331480": {
+   "area": "area2",
+   "conf": 0.91
+  },
+  "w43332682": {
+   "area": "area2",
+   "conf": 0.99
+  },
+  "w43332683": {
+   "area": "gtaa",
+   "conf": 1.0
+  },
+  "w43332730": {
+   "area": "area1",
+   "conf": 0.99
+  },
+  "w43332735": {
+   "area": "area3",
+   "conf": 0.94
+  },
+  "w43332751": {
+   "area": "parking",
+   "conf": 0.99
+  },
+  "w43335055": {
+   "area": "area5",
+   "conf": 0.91
+  },
+  "w43335057": {
+   "area": "area5",
+   "conf": 0.99
+  },
+  "w43335058": {
+   "area": "area5",
+   "conf": 0.95
+  },
+  "w43335086": {
+   "area": "area5",
+   "conf": 0.96
+  },
+  "w43335091": {
+   "area": "area5",
+   "conf": 0.91
+  },
+  "w43335093": {
+   "area": "area5",
+   "conf": 0.95
+  },
+  "w43335096": {
+   "area": "area5",
+   "conf": 0.97
+  },
+  "w43335117": {
+   "area": "area5",
+   "conf": 0.96
+  },
+  "w43335122": {
+   "area": "area5",
+   "conf": 0.95
+  },
+  "w43335124": {
+   "area": "area5",
+   "conf": 0.95
+  },
+  "w43890894": {
+   "area": "housing",
+   "conf": 0.98
+  },
+  "w43890921": {
+   "area": "housing",
+   "conf": 0.94
+  },
+  "w43890968": {
+   "area": "housing",
+   "conf": 0.88
+  },
+  "w43891014": {
+   "area": "housing",
+   "conf": 0.88
+  },
+  "w43891100": {
+   "area": "parking",
+   "conf": 0.87
+  },
+  "w454804208": {
+   "area": "housing",
+   "conf": 0.62
+  },
+  "w516716114": {
+   "area": "area1",
+   "conf": 0.97
+  },
+  "w516716115": {
+   "area": "area1",
+   "conf": 0.83
+  },
+  "w560915363": {
+   "area": "area2",
+   "conf": 0.95
+  },
+  "w714119667": {
+   "area": "non_gt",
+   "conf": 0.97
+  },
+  "w751387123": {
+   "area": "area2",
+   "conf": 0.95
+  },
+  "w791413998": {
+   "area": "non_gt",
+   "conf": 1.0
+  },
+  "w792229255": {
+   "area": "non_gt",
+   "conf": 0.99
+  },
+  "w837935643": {
+   "area": "area1",
+   "conf": 0.84
+  },
+  "w88636657": {
+   "area": "area3",
+   "conf": 0.98
+  },
+  "w886581517": {
+   "area": "non_gt",
+   "conf": 0.84
+  },
+  "w886581622": {
+   "area": "area5",
+   "conf": 0.77
+  },
+  "w974793133": {
+   "area": "area1",
+   "conf": 0.75
+  },
+  "w974793134": {
+   "area": "area1",
+   "conf": 0.89
+  },
+  "w974793135": {
+   "area": "area1",
+   "conf": 0.6
+  },
+  "w977377065": {
+   "area": "area2",
+   "conf": 0.93
+  },
+  "w977377066": {
+   "area": "area2",
+   "conf": 0.95
+  },
+  "w977377067": {
+   "area": "area2",
+   "conf": 0.97
+  }
+ }
+}

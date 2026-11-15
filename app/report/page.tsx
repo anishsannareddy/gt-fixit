@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
-import { requireUser } from "@/lib/demo-auth";
+import { requireUser } from "@/lib/auth";
 import { getBuildings } from "@/lib/data";
-import { ReportForm } from "./ReportForm";
+import { ReportMap } from "./ReportMap";
 
-export const metadata: Metadata = { title: "Report an issue" };
+export const metadata: Metadata = { title: "Campus map" };
 
 export default async function ReportPage() {
   await requireUser(["reporter"]);
   const buildings = await getBuildings();
-
-  return (
-    <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-bold text-gt-navy md:text-3xl">Report an issue</h1>
-      <p className="mt-1 text-slate-600">Tell us what&apos;s wrong and where. A photo helps the technician come prepared.</p>
-      <ReportForm buildings={buildings} />
-    </div>
-  );
+  return <ReportMap buildings={buildings} />;
 }

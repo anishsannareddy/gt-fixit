@@ -42,3 +42,10 @@ next-env.d.ts
 
 # allow the example env file
 !.env.example
+
+# third-party source material for one-off data scripts (zone map screenshot, raw OSM download)
+/data/source/
+
+# Playwright
+/test-results/
+/playwright-report/

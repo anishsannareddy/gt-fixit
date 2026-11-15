@@ -1,21 +1,58 @@
 "use client";
 
-import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useEffect, useState, type FormEvent } from "react";
 import imageCompression from "browser-image-compression";
 import type { Building } from "@/lib/types";
-import { CATEGORIES, PHOTO_BUCKET, PRIORITIES, PRIORITY_META } from "@/lib/constants";
+import { CATEGORIES, PHOTO_BUCKET, PRIORITIES, PRIORITY_META, type Category } from "@/lib/constants";
 import { browserSupabase } from "@/lib/supabase/browser";
-import { BuildingPicker } from "@/components/BuildingPicker";
 import { PhotoUploader } from "@/components/PhotoUploader";
+import { FieldError, Input, Label, SegmentedControl, Textarea } from "@/components/ui/Form";
+import {
+  ApplianceIcon, BoltIcon, BugIcon, BulbIcon, ChairIcon, DotsIcon, DropletIcon, ElevatorIcon, LockIcon, SparkleIcon, ThermometerIcon,
+} from "@/components/ui/Icons";
 import { createPhotoUploadUrl, createRequest, type ReportState } from "./actions";
 
-export function ReportForm({ buildings }: { buildings: Building[] }) {
+export const REPORT_FORM_ID = "report-form";
+
+const CATEGORY_ICON: Record<Category, typeof BoltIcon> = {
+  Plumbing: DropletIcon,
+  Electrical: BoltIcon,
+  "HVAC / Temperature": ThermometerIcon,
+  Elevator: ElevatorIcon,
+  Lighting: BulbIcon,
+  "Doors & Locks": LockIcon,
+  Furniture: ChairIcon,
+  "Custodial / Cleaning": SparkleIcon,
+  "Pest Control": BugIcon,
+  Appliances: ApplianceIcon,
+  Other: DotsIcon,
+};
+const CATEGORY_SHORT: Partial<Record<Category, string>> = {
+  "HVAC / Temperature": "Heating & AC",
+  "Custodial / Cleaning": "Cleaning",
+  "Doors & Locks": "Doors & locks",
+  "Pest Control": "Pests",
+};
+
+/**
+ * The report form shown in the sheet after a building is picked on the map.
+ * The submit button lives in the sheet footer and targets this form by id.
+ * `onBusy` tells the parent when a photo upload or save is running, so it can label that button.
+ */
+export function ReportForm({
+  building,
+  onBusy,
+  onCreated,
+}: {
+  building: Building;
+  onBusy: (label: string | null) => void;
+  /** Called with the new request id once it's saved. */
+  onCreated: (id: number) => void;
+}) {
   const [state, formAction, saving] = useActionState<ReportState, FormData>(createRequest, undefined);
   const [photo, setPhoto] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const errors = state?.fieldErrors ?? {};
-  const busy = uploading || saving;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,129 +60,99 @@ export function ReportForm({ buildings }: { buildings: Building[] }) {
     const formData = new FormData(e.currentTarget);
 
     if (photo) {
-      setUploading(true);
+      onBusy("Uploading photo…");
       try {
         // 1. Shrink big phone photos (often 3–8MB) to ~1MB in the browser
-        const compressed = await imageCompression(photo, {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          fileType: "image/jpeg",
-          useWebWorker: true,
-        });
+        const compressed = await imageCompression(photo, { maxSizeMB: 1, maxWidthOrHeight: 1920, fileType: "image/jpeg", useWebWorker: true });
         // 2. Ask our server for a one-time upload URL
         const signed = await createPhotoUploadUrl();
         if ("error" in signed) throw new Error(signed.error);
         // 3. Upload directly from the browser to Supabase Storage
-        const { error } = await browserSupabase()
-          .storage.from(PHOTO_BUCKET)
-          .uploadToSignedUrl(signed.path, signed.token, compressed, { contentType: "image/jpeg" });
+        const { error } = await browserSupabase().storage.from(PHOTO_BUCKET).uploadToSignedUrl(signed.path, signed.token, compressed, { contentType: "image/jpeg" });
         if (error) throw error;
         formData.set("photo_path", signed.path);
       } catch (err) {
         console.error(err);
         setUploadError("Photo upload failed. Try again, or remove the photo to submit without it.");
-        setUploading(false);
+        onBusy(null);
         return;
       }
-      setUploading(false);
     }
 
+    onBusy("Submitting…");
     startTransition(() => formAction(formData));
   }
 
+  // When the save finishes: re-enable the submit button, and show the success screen if it worked.
+  useEffect(() => {
+    if (saving || !state) return;
+    onBusy(null);
+    if (state.created) onCreated(state.created.id);
+  }, [saving, state, onBusy, onCreated]);
+
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6" noValidate>
-      <Section step={1} title="Where is the problem?">
-        <BuildingPicker buildings={buildings} name="building_id" error={errors.building_id} />
-        <FieldError msg={errors.building_id} />
-        <div className="mt-3">
-          <label htmlFor="location_detail" className="label">
-            Room, floor or area <span className="font-normal text-slate-500">(optional)</span>
-          </label>
-          <input id="location_detail" name="location_detail" className="field" placeholder="e.g. Room 214, 3rd floor bathroom" maxLength={120} />
-        </div>
-      </Section>
+    <form id={REPORT_FORM_ID} onSubmit={handleSubmit} noValidate className="space-y-5">
+      <input type="hidden" name="building_id" value={building.id} />
 
-      <Section step={2} title="What kind of issue?">
-        <fieldset>
-          <legend className="sr-only">Category</legend>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((c) => (
-              <label key={c} className="cursor-pointer">
-                <input type="radio" name="category" value={c} className="peer sr-only" required />
-                <span className="inline-block rounded-full border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition peer-checked:border-gt-navy peer-checked:bg-gt-navy peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-gt-gold hover:border-gt-navy">
-                  {c}
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <FieldError msg={errors.category} />
-
-        <fieldset className="mt-5">
-          <legend className="label">How urgent is it?</legend>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {PRIORITIES.map((p) => (
-              <label key={p} className="cursor-pointer">
-                <input type="radio" name="priority" value={p} defaultChecked={p === "medium"} className="peer sr-only" />
-                <span className="block h-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 transition peer-checked:border-gt-navy peer-checked:ring-2 peer-checked:ring-gt-navy/20 peer-focus-visible:ring-2 peer-focus-visible:ring-gt-gold">
-                  <span className={`block text-sm font-semibold ${p === "urgent" ? "text-red-700" : "text-slate-900"}`}>{PRIORITY_META[p].label}</span>
-                  <span className="block text-xs text-slate-500">{PRIORITY_META[p].hint}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <FieldError msg={errors.priority} />
-      </Section>
-
-      <Section step={3} title="Describe it">
-        <label htmlFor="title" className="label">Short summary</label>
-        <input id="title" name="title" className={`field ${errors.title ? "border-red-400" : ""}`} placeholder="e.g. AC not cooling" maxLength={120} required />
-        <FieldError msg={errors.title} />
-        <label htmlFor="description" className="label mt-3">
-          Details <span className="font-normal text-slate-500">(optional)</span>
-        </label>
-        <textarea id="description" name="description" rows={4} className="field resize-y" placeholder="What's happening? When did it start?" maxLength={2000} />
-        <FieldError msg={errors.description} />
-      </Section>
-
-      <Section step={4} title="Add a photo">
-        <PhotoUploader onChange={setPhoto} />
-        <FieldError msg={uploadError ?? undefined} />
-      </Section>
-
-      {state?.error && (
-        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
-          {state.error}
-        </p>
-      )}
-      {Object.keys(errors).length > 0 && (
-        <p role="alert" className="text-sm font-medium text-red-700">Please fix the highlighted fields above.</p>
-      )}
-
-      <div className="sticky bottom-20 z-10 md:static">
-        <button type="submit" disabled={busy} className="btn-gold w-full py-3.5 text-base shadow-lg md:w-auto md:px-8 md:shadow-none">
-          {uploading ? "Uploading photo…" : saving ? "Submitting…" : "Submit request"}
-        </button>
+      <div>
+        <Label htmlFor="location_detail" optional>
+          Room, floor or area
+        </Label>
+        <Input id="location_detail" name="location_detail" placeholder="e.g. Room 214, 3rd floor bathroom" maxLength={120} />
       </div>
+
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-semibold text-ink">What kind of issue?</legend>
+        <div className="grid grid-cols-3 gap-2">
+          {CATEGORIES.map((c) => {
+            const Icon = CATEGORY_ICON[c];
+            return (
+              <label key={c} className="cursor-pointer">
+                <input type="radio" name="category" value={c} className="peer sr-only" />
+                <span className="flex h-full min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-line bg-white px-1 py-2.5 text-center text-xs font-semibold text-ink-muted transition peer-checked:border-gt-navy peer-checked:ring-2 peer-checked:ring-gt-gold peer-checked:bg-gold-50 peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gt-navy hover:border-slate-300">
+                  <Icon className="size-6" />
+                  {CATEGORY_SHORT[c] ?? c}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <FieldError>{errors.category}</FieldError>
+      </fieldset>
+
+      <div>
+        <SegmentedControl
+          name="priority"
+          label="How urgent is it?"
+          defaultValue="medium"
+          options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_META[p].label, danger: p === "urgent" }))}
+        />
+        <p className="mt-1.5 text-xs text-ink-muted">Urgent is for safety risks or flooding.</p>
+        <FieldError>{errors.priority}</FieldError>
+      </div>
+
+      <div>
+        <Label htmlFor="title">Short summary</Label>
+        <Input id="title" name="title" placeholder="e.g. AC not cooling" maxLength={120} aria-invalid={Boolean(errors.title)} />
+        <FieldError>{errors.title}</FieldError>
+      </div>
+
+      <div>
+        <Label htmlFor="description" optional>
+          Details
+        </Label>
+        <Textarea id="description" name="description" rows={3} placeholder="What's happening? When did it start?" maxLength={2000} />
+        <FieldError>{errors.description}</FieldError>
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-sm font-semibold text-ink">Photo</p>
+        <PhotoUploader onChange={setPhoto} />
+        <FieldError>{uploadError}</FieldError>
+      </div>
+
+      <FieldError>{state?.error}</FieldError>
+      {Object.keys(errors).length > 0 && <FieldError>Please fix the highlighted fields above.</FieldError>}
     </form>
   );
-}
-
-function Section({ step, title, children }: { step: number; title: string; children: React.ReactNode }) {
-  return (
-    <section className="card p-4 md:p-6">
-      <h2 className="mb-3 flex items-center gap-2.5 font-bold text-gt-navy">
-        <span className="grid size-6 place-items-center rounded-full bg-gt-gold text-xs text-gt-navy">{step}</span>
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-function FieldError({ msg }: { msg?: string }) {
-  if (!msg) return null;
-  return <p className="mt-1.5 text-sm text-red-700">{msg}</p>;
 }

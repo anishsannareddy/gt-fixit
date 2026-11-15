@@ -8,6 +8,9 @@
  */
 import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
+import { AREA_META, type Area } from "../lib/campus/areas";
+import { campusBuildings, isGT, type CampusBuildingInfo } from "../lib/campus/zones";
+import { DEMO_ACCOUNTS, demoPassword } from "../lib/demo-accounts";
 
 config({ path: ".env.local" });
 
@@ -47,58 +50,38 @@ const HOUR = 3_600_000;
 
 // ---------- reference data ----------
 type BType = "residence" | "academic" | "dining" | "athletic" | "other";
-const BUILDINGS: [name: string, short: string, type: BType][] = [
-  // Residence halls & apartments
-  ["Glenn Hall", "Glenn", "residence"],
-  ["Towers Hall", "Towers", "residence"],
-  ["Woodruff Hall North", "Woodruff N", "residence"],
-  ["Woodruff Hall South", "Woodruff S", "residence"],
-  ["North Avenue Apartments East", "NAE", "residence"],
-  ["North Avenue Apartments West", "NAW", "residence"],
-  ["North Avenue Apartments North", "NAN", "residence"],
-  ["North Avenue Apartments South", "NAS", "residence"],
-  ["Eighth Street Apartments", "8th St", "residence"],
-  ["Fitten Hall", "Fitten", "residence"],
-  ["Freeman Hall", "Freeman", "residence"],
-  ["Montag Hall", "Montag", "residence"],
-  ["Folk Hall", "Folk", "residence"],
-  ["Caldwell Hall", "Caldwell", "residence"],
-  ["Hefner Hall", "Hefner", "residence"],
-  ["Armstrong Hall", "Armstrong", "residence"],
-  ["Field Hall", "Field", "residence"],
-  ["Smith Hall", "Smith", "residence"],
-  ["Harris Hall", "Harris", "residence"],
-  ["Brown Hall", "Brown", "residence"],
-  ["Cloudman Hall", "Cloudman", "residence"],
-  ["Matheson Hall", "Matheson", "residence"],
-  ["Howell Hall", "Howell", "residence"],
-  ["Graduate Living Center", "GLC", "residence"],
-  // Academic & research
-  ["Clough Undergraduate Learning Commons", "CULC", "academic"],
-  ["Klaus Advanced Computing Building", "Klaus", "academic"],
-  ["Howey Physics Building", "Howey", "academic"],
-  ["Van Leer Building", "Van Leer", "academic"],
-  ["College of Computing Building", "CoC", "academic"],
-  ["Skiles Classroom Building", "Skiles", "academic"],
-  ["Price Gilbert Memorial Library", "Price Gilbert", "academic"],
-  ["Crosland Tower", "Crosland", "academic"],
-  ["Kendeda Building", "Kendeda", "academic"],
-  ["Scheller College of Business", "Scheller", "academic"],
-  ["Engineered Biosystems Building", "EBB", "academic"],
-  ["Molecular Science and Engineering Building", "MoSE", "academic"],
-  ["Instructional Center", "IC", "academic"],
-  ["Boggs Building", "Boggs", "academic"],
-  ["Mason Building", "Mason", "academic"],
-  // Dining
-  ["Brittain Dining Hall", "Brittain", "dining"],
-  ["West Village Dining Commons", "West Village", "dining"],
-  ["North Avenue Dining Hall", "Nave Dining", "dining"],
-  // Athletics & rec
-  ["Campus Recreation Center", "CRC", "athletic"],
-  // Other
-  ["John Lewis Student Center", "Student Center", "other"],
-  ["Stamps Health Services", "Stamps", "other"],
-];
+/**
+ * Buildings come from the real campus data: every OpenStreetMap footprint that the GT Facilities
+ * zone map colours with a maintenance area (data/campus.json + data/zones.json + data/zone-overrides.json).
+ */
+function shortName(name: string): string {
+  const short = name
+    .replace(/ (Residence Hall|Building|Memorial Library|Apartments|Hall)\b/g, "")
+    .replace(/^(The|Georgia Tech) /, "")
+    .trim();
+  return short.length > 24 ? short.slice(0, 23).trimEnd() + "…" : short;
+}
+
+function typeOf(b: CampusBuildingInfo & { zone: Area }): BType {
+  const name = b.name ?? "";
+  if (/dining|brittain/i.test(name)) return "dining";
+  if (b.zone === "housing") return "residence";
+  if (b.zone === "gtaa" || /recreation|stadium|pavilion|coliseum|gym/i.test(name)) return "athletic";
+  if (b.zone === "parking" || /parking|deck/i.test(name)) return "other";
+  return "academic";
+}
+
+function campusRows() {
+  const used = new Map<string, number>();
+  return campusBuildings.filter(isGT).map((b) => {
+    // Names must be unique in the table; OSM has a few repeats and some unnamed buildings.
+    const base = b.name ?? `Unnamed building (${AREA_META[b.zone].label})`;
+    const n = (used.get(base) ?? 0) + 1;
+    used.set(base, n);
+    const name = n === 1 ? base : `${base} #${n}`;
+    return { name, short_name: shortName(name), type: typeOf(b), number: b.number, area: b.zone, lat: b.lat, lng: b.lng, osm_id: b.id };
+  });
+}
 
 type Seed = { title: string; desc: string; priority: [string, number][] };
 const ISSUES: Record<string, Seed[]> = {
@@ -225,14 +208,8 @@ function locationFor(type: BType): string {
 }
 
 // ---------- people ----------
-const DEMO_USERS = [
-  { name: "Alex Rivera", role: "reporter", title: "2nd-year CS student · Glenn Hall" },
-  { name: "Dr. Priya Shah", role: "reporter", title: "Faculty · School of ECE" },
-  { name: "Marcus Reed", role: "technician", title: "HVAC & Electrical Technician" },
-  { name: "Tasha Coleman", role: "technician", title: "Plumbing Technician" },
-  { name: "Luis Ortega", role: "technician", title: "General Maintenance Technician" },
-  { name: "Jordan Ellis", role: "admin", title: "Facilities Operations Manager" },
-] as const;
+// Demo personas get real sign-in accounts (see lib/demo-accounts.ts for emails).
+const DEMO_USERS = DEMO_ACCOUNTS;
 const EXTRA_TECHS = ["Dana Whitfield", "Kevin Park"];
 const FIRST = ["Sam", "Jamie", "Taylor", "Morgan", "Riley", "Casey", "Avery", "Quinn", "Drew", "Reese", "Skyler", "Emerson", "Hayden", "Rowan", "Parker", "Logan", "Kai", "Jules", "Noel", "Sage"];
 const LAST = ["Nguyen", "Patel", "Kim", "Johnson", "Garcia", "Okafor", "Chen", "Williams", "Brooks", "Diaz", "Singh", "Lopez", "Martin", "Lee", "Hughes"];
@@ -260,6 +237,34 @@ async function ensureBucket() {
   console.log(`✓ Created storage bucket "${PHOTO_BUCKET}"`);
 }
 
+/**
+ * (Re)create the Supabase Auth accounts for the demo personas.
+ * Old demo accounts are deleted first so the password always matches DEMO_ACCOUNT_PASSWORD.
+ * Accounts people created themselves through sign-up are left alone.
+ */
+async function createDemoAccounts(): Promise<Map<string, string>> {
+  const wanted = new Set(DEMO_ACCOUNTS.map((a) => a.email));
+  for (let page = 1; ; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(`list auth users: ${error.message}`);
+    for (const u of data.users) {
+      if (u.email && wanted.has(u.email)) {
+        const del = await supabase.auth.admin.deleteUser(u.id);
+        if (del.error) throw new Error(`delete ${u.email}: ${del.error.message}`);
+      }
+    }
+    if (data.users.length < 1000) break;
+  }
+  const ids = new Map<string, string>();
+  for (const a of DEMO_ACCOUNTS) {
+    const { data, error } = await supabase.auth.admin.createUser({ email: a.email, password: demoPassword(), email_confirm: true, user_metadata: { name: a.name } });
+    if (error || !data.user) throw new Error(`create ${a.email}: ${error?.message}. Is Email sign-in enabled in Supabase → Authentication → Providers?`);
+    ids.set(a.email, data.user.id);
+  }
+  console.log(`✓ ${ids.size} demo sign-in accounts`);
+  return ids;
+}
+
 async function wipe() {
   // Supabase requires a filter on delete; these match every row.
   for (const table of ["request_events", "requests"]) {
@@ -282,15 +287,20 @@ async function main() {
   await ensureBucket();
   await wipe();
 
-  const buildings = (await insertChunked(
-    "buildings",
-    BUILDINGS.map(([name, short_name, type]) => ({ name, short_name, type })),
-    "id, name, type",
-  )) as { id: number; name: string; type: BType }[];
-  console.log(`✓ ${buildings.length} buildings`);
+  const buildings = (await insertChunked("buildings", campusRows(), "id, name, type, area")) as {
+    id: number;
+    name: string;
+    type: BType;
+    area: Area;
+  }[];
+  const perArea = buildings.reduce<Record<string, number>>((m, b) => ((m[b.area] = (m[b.area] ?? 0) + 1), m), {});
+  console.log(`✓ ${buildings.length} GT buildings (${Object.entries(perArea).map(([a, n]) => `${AREA_META[a as Area].label}: ${n}`).join(", ")})`);
 
+  const accounts = await createDemoAccounts();
+  // Inserted in two batches: when one insert mixes rows with and without an `id`,
+  // Supabase sends null for the missing ids instead of letting the database generate them.
+  const demoRows = DEMO_USERS.map((u) => ({ ...u, id: accounts.get(u.email)!, is_demo: true }));
   const userRows = [
-    ...DEMO_USERS.map((u) => ({ ...u, is_demo: true })),
     ...EXTRA_TECHS.map((name) => ({ name, role: "technician", title: "Maintenance Technician", is_demo: false })),
     ...Array.from({ length: 40 }, (_, i) => ({
       name: `${FIRST[i % FIRST.length]} ${LAST[(i * 7) % LAST.length]}`,
@@ -299,7 +309,10 @@ async function main() {
       is_demo: false,
     })),
   ];
-  const users = (await insertChunked("users", userRows, "id, name, role, is_demo")) as {
+  const users = [
+    ...(await insertChunked("users", demoRows, "id, name, role, is_demo")),
+    ...(await insertChunked("users", userRows, "id, name, role, is_demo")),
+  ] as {
     id: string;
     name: string;
     role: string;
@@ -310,14 +323,15 @@ async function main() {
   const techs = users.filter((u) => u.role === "technician");
   const admin = users.find((u) => u.role === "admin")!;
   const alex = demoReporters.find((u) => u.name.startsWith("Alex"))!;
-  const glenn = buildings.find((b) => b.name === "Glenn Hall")!;
+  const glenn = buildings.find((b) => b.name.includes("Glenn Residence Hall")) ?? buildings.find((b) => b.type === "residence")!;
   console.log(`✓ ${users.length} users (${DEMO_USERS.length} demo personas)`);
 
   // Weight residence halls heavier — that's where most requests come from.
   const buildingWeights = buildings.map((b) => {
-    let w = b.type === "residence" ? 3 : b.type === "academic" ? 1.6 : 1.2;
-    // a few "problem buildings" so the top-10 chart has a story
-    if (["Towers Hall", "Glenn Hall", "North Avenue Apartments East", "Howey Physics Building"].includes(b.name)) w *= 2.2;
+    let w = b.type === "residence" ? 2.2 : b.type === "academic" ? 1.6 : b.area === "parking" ? 0.5 : 1.2;
+    if (b.name.startsWith("Unnamed")) w *= 0.3;
+    // a few "problem buildings" so the top-10 chart and heat map have a story
+    if (/Towers Residence Hall|Glenn Residence Hall|North Avenue Apartments North|Howey Building$|Clough|Klaus|Student Center$/.test(b.name)) w *= 4;
     return [b, w] as const;
   });
 
@@ -325,7 +339,12 @@ async function main() {
   type RequestRow = Record<string, unknown> & { _events: Record<string, unknown>[] };
   const rows: RequestRow[] = [];
 
-  const FRESH_UNASSIGNED = 9; // brand-new requests nobody has claimed yet
+  const FRESH_UNASSIGNED = 12; // brand-new requests nobody has claimed yet
+  // A few buildings with a real backlog right now, so the admin heat map has hot spots to show
+  // (e.g. an old dorm with failing plumbing, a busy academic building). Thresholds: lib/campus/heat.ts
+  const HOTSPOTS = [/Glenn Residence Hall$/, /Towers Residence Hall$/, /Clough/, /Howey Building$/, /Student Center$/]
+    .map((re) => buildings.find((b) => re.test(b.name)))
+    .filter((b): b is (typeof buildings)[number] => Boolean(b));
   for (let i = 0; i < TARGET_REQUESTS * 1.4 && rows.length < TARGET_REQUESTS; i++) {
     // The first few iterations are fresh, unclaimed requests from the last ~30 hours.
     // After that: more recent days a bit busier; August move-in spike; fewer on weekends.
@@ -347,6 +366,14 @@ async function main() {
       CATEGORY_WEIGHTS.map(([c, w]) => [c, c === "HVAC / Temperature" && warm ? w * 2 : w] as const),
     );
     let building = weighted(buildingWeights);
+    // Recent requests cluster in the hot-spot buildings (the first two get the most).
+    let hot = false;
+    if (daysAgo < 12 && HOTSPOTS.length && rand() < 0.6) {
+      // First two: badly backed up (red). The rest: busy but coping (yellow).
+      const i = HOTSPOTS.indexOf(weighted(HOTSPOTS.map((b, j) => [b, j < 2 ? 3 : 1] as const)));
+      building = HOTSPOTS[i];
+      hot = i < 2;
+    }
     let issue = pick(ISSUES[category]);
     if (building.type !== "residence" && NON_RESIDENCE_CATEGORIES.has(issue.title)) {
       issue = ISSUES[category][0];
@@ -364,7 +391,8 @@ async function main() {
     // Status depends on age: almost everything older than ~10 days is resolved.
     const [minH, maxH] = RESOLVE_HOURS[priority];
     // The last few days have a backlog, so the live queue has real work in it
-    const backlog = daysAgo < 6 ? between(1.5, 3) : 1;
+    // Hot-spot buildings are backed up, so their requests take much longer to clear.
+    const backlog = hot ? between(3, 6) : daysAgo < 6 ? between(1.5, 3) : 1;
     const resolveHours = between(minH, maxH) * (category === "Elevator" ? 1.6 : 1) * backlog;
     const ageHours = (now - created.getTime()) / HOUR;
     const assignAfter = Math.min(resolveHours * between(0.1, 0.3), between(0.3, 8));
@@ -411,6 +439,7 @@ async function main() {
       title: issue.title,
       description: issue.desc,
       building_id: building.id,
+      area: building.area,
       location_detail: locationFor(building.type),
       category,
       priority,
@@ -440,6 +469,8 @@ async function main() {
 
   const open = rows.filter((r) => r.status !== "resolved").length;
   console.log(`✓ ${inserted.length} requests (${open} open) and ${events.length} timeline events`);
+  console.log("\nDemo accounts (sign in at /login):");
+  console.table(DEMO_ACCOUNTS.map((a) => ({ role: a.role, name: a.name, email: a.email, password: demoPassword() })));
   console.log("\nDone! Start the app with: npm run dev");
 }
 

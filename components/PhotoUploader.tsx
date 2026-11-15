@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CameraIcon, XIcon } from "./Icons";
+import { CameraIcon, XIcon } from "@/components/ui/Icons";
 
 /**
  * Lets the user take/choose a photo and shows a preview.
@@ -26,25 +26,18 @@ export function PhotoUploader({ onChange }: { onChange: (f: File | null) => void
 
   return (
     <div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        aria-label="Add a photo"
-        onChange={(e) => select(e.target.files?.[0] ?? null)}
-      />
+      <input ref={inputRef} type="file" accept="image/*" className="sr-only" aria-label="Add a photo" onChange={(e) => select(e.target.files?.[0] ?? null)} />
       {preview ? (
         <div className="relative inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt="Selected photo preview" className="h-44 w-auto max-w-full rounded-xl object-cover shadow-sm" />
+          <img src={preview} alt="Selected photo preview" className="h-40 w-auto max-w-full rounded-2xl object-cover ring-1 ring-slate-300" />
           <button
             type="button"
             onClick={() => {
               select(null);
               if (inputRef.current) inputRef.current.value = "";
             }}
-            className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/75"
+            className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/65 text-white hover:bg-black/80"
             aria-label="Remove photo"
           >
             <XIcon className="size-4" />
@@ -54,11 +47,15 @@ export function PhotoUploader({ onChange }: { onChange: (f: File | null) => void
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex w-full flex-col items-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-white px-4 py-6 text-slate-600 transition hover:border-gt-gold hover:bg-gt-gold-50"
+          className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-4 text-left transition hover:border-gt-gold hover:bg-white"
         >
-          <CameraIcon className="size-7 text-gt-navy" />
-          <span className="font-semibold text-slate-800">Take or upload a photo</span>
-          <span className="text-xs">Optional · JPG or PNG</span>
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gt-gold/15 text-gold-ink">
+            <CameraIcon className="size-6" />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold">Take or upload a photo</span>
+            <span className="block text-xs text-ink-muted">Optional, but it helps the technician come prepared</span>
+          </span>
         </button>
       )}
     </div>

@@ -1,252 +1,230 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { requireUser } from "@/lib/demo-auth";
+import { Suspense } from "react";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
-import { fetchAll, getBuildings, getTechnicians } from "@/lib/data";
-import { computeAnalytics, type AnalyticsRow } from "@/lib/analytics";
-import { STATUS_META } from "@/lib/constants";
-import { formatHours } from "@/lib/format";
-import { TrendChart } from "@/components/charts/TrendChart";
-import { HBarChart } from "@/components/charts/HBarChart";
-import { AlertIcon } from "@/components/Icons";
+import { fetchAll, getBuildings, getTechnicians, getTicket, getTicketEvents, TICKET_SELECT } from "@/lib/data";
+import { computeAnalytics } from "@/lib/analytics";
+import { OPEN_STATUSES, PRIORITIES, PRIORITY_META, PRIORITY_RANK, STATUSES, STATUS_META } from "@/lib/constants";
+import { AREAS, AREA_META } from "@/lib/campus/areas";
+import { formatHours, timeAgo } from "@/lib/format";
+import type { TicketWithRelations } from "@/lib/types";
+import { AutoRefresh } from "@/components/AutoRefresh";
+import { AdminCampusMap } from "@/components/campus/AdminCampusMap";
+import { AreaBadge, PriorityBadge, StatusBadge } from "@/components/ui/Badge";
+import { EmptyState, KpiTile } from "@/components/ui/Feedback";
+import { FilterSelect } from "@/components/ui/FilterSelect";
+import { ChartIcon, XIcon } from "@/components/ui/Icons";
+import { PageContainer, PageHeader } from "@/components/ui/Surface";
+import { TicketActions } from "@/components/tickets/TicketActions";
+import { TicketDetail } from "@/components/tickets/TicketDetail";
+import { AdminDrawer } from "./AdminDrawer";
+import { SearchBox } from "./SearchBox";
 
-export const metadata: Metadata = { title: "Analytics" };
+export const metadata: Metadata = { title: "Command Center" };
 
-const RANGES = [7, 30, 90] as const;
+const ROW_LIMIT = 150;
 
-export default async function AdminDashboard(props: PageProps<"/admin">) {
-  await requireUser(["admin"]);
+export default async function CommandCenter(props: PageProps<"/admin">) {
+  const user = await requireUser(["admin"]);
   const sp = await props.searchParams;
-  const days = RANGES.find((r) => String(r) === sp.range) ?? 30;
+  const str = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string).trim() : "");
 
-  const [rows, buildings, technicians] = await Promise.all([
-    fetchAll<AnalyticsRow>((from, to) =>
-      db()
-        .from("requests")
-        .select("id, created_at, resolved_at, status, priority, category, building_id, assignee_id")
-        .order("id")
-        .range(from, to),
-    ),
+  const [tickets, buildings, technicians] = await Promise.all([
+    fetchAll<TicketWithRelations>((from, to) => db().from("requests").select(TICKET_SELECT).order("id").range(from, to)),
     getBuildings(),
     getTechnicians(),
   ]);
-  const a = computeAnalytics(rows, buildings, technicians, days);
-  const statusTotal = a.statusCounts.reduce((s, x) => s + x.value, 0);
+
+  // ── KPIs (last 30 days) and the map's open-request counts ──
+  const a = computeAnalytics(tickets, buildings, technicians, 30);
+  const osmId = new Map(buildings.map((b) => [b.id, b.osm_id]));
+  const openByOsmId: Record<string, number> = {};
+  for (const t of tickets) {
+    const id = osmId.get(t.building_id);
+    if (t.status !== "resolved" && id) openByOsmId[id] = (openByOsmId[id] ?? 0) + 1;
+  }
+
+  // ── Filters (all in the URL, so views can be shared and survive refresh) ──
+  const status = str("status") || "open"; // "open" = submitted + assigned + in progress
+  const priority = str("priority");
+  const area = str("area");
+  const building = Number(str("building")) || null;
+  const q = str("q").toLowerCase().replace(/^#/, "");
+  const buildingName = building ? buildings.find((b) => b.id === building)?.name : null;
+
+  const rows = tickets
+    .filter((t) => (status === "open" ? OPEN_STATUSES.includes(t.status) : status === "all" ? true : t.status === status))
+    .filter((t) => !priority || t.priority === priority)
+    .filter((t) => !area || t.area === area)
+    .filter((t) => !building || t.building_id === building)
+    .filter((t) => !q || String(t.id) === q || t.title.toLowerCase().includes(q) || (t.building?.name.toLowerCase().includes(q) ?? false))
+    .sort((x, y) =>
+      status === "resolved" || status === "all"
+        ? y.created_at.localeCompare(x.created_at)
+        : PRIORITY_RANK[x.priority] - PRIORITY_RANK[y.priority] || x.created_at.localeCompare(y.created_at),
+    );
+
+  const keep = (extra: Record<string, string | null>) => {
+    const next = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string") as [string, string][]);
+    for (const [k, v] of Object.entries(extra)) {
+      if (v === null) next.delete(k);
+      else next.set(k, v);
+    }
+    return `/admin?${next}`;
+  };
+
+  // ── Drawer ──
+  const ticketId = Number(str("ticket")) || null;
+  const [drawerTicket, drawerEvents] = ticketId ? await Promise.all([getTicket(ticketId), getTicketEvents(ticketId)]) : [null, []];
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gt-navy md:text-3xl">Maintenance analytics</h1>
-          <p className="mt-1 text-slate-600">Campus-wide request activity · last {days} days</p>
-        </div>
-        <nav className="flex rounded-xl bg-white p-1 ring-1 ring-slate-200" aria-label="Date range">
-          {RANGES.map((r) => (
-            <Link
-              key={r}
-              href={`/admin?range=${r}`}
-              aria-current={r === days ? "page" : undefined}
-              className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
-                r === days ? "bg-gt-navy text-white" : "text-slate-600 hover:text-gt-navy"
-              }`}
-            >
-              {r}d
-            </Link>
-          ))}
-        </nav>
-      </div>
+    <PageContainer className="space-y-5">
+      <AutoRefresh />
+      <PageHeader eyebrow="Facilities operations" title="Command Center" subtitle="Live view of every maintenance request on campus.">
+        <Link href="/admin/analytics" className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold hover:bg-navy-50">
+          <ChartIcon className="size-4" /> Analytics
+        </Link>
+      </PageHeader>
 
-      {/* KPI tiles */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Key metrics">
-        <Kpi label="Open right now" value={a.kpis.openNow.toLocaleString()} sub={`${a.kpis.unassigned} unassigned`} />
-        <Kpi
-          label="Urgent open"
-          value={a.kpis.urgentOpen.toLocaleString()}
-          sub={a.kpis.urgentOpen ? "Needs attention" : "All clear"}
-          alert={a.kpis.urgentOpen > 0}
-        />
-        <Kpi label="Submitted" value={a.kpis.submitted.toLocaleString()} change={a.kpis.submittedChange} days={days} neutral />
-        <Kpi label="Resolved" value={a.kpis.resolved.toLocaleString()} change={a.kpis.resolvedChange} days={days} goodWhenUp />
-        <Kpi
-          label="Avg. time to resolve"
-          value={formatHours(a.kpis.avgResolveHours)}
-          sub={`Median ${formatHours(a.kpis.medianResolveHours)}`}
-          change={a.kpis.avgResolveChange}
-          days={days}
-          className="col-span-2 lg:col-span-1"
-        />
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="Key numbers">
+        <KpiTile label="Open now" value={a.kpis.openNow} />
+        <KpiTile label="Urgent open" value={a.kpis.urgentOpen} tone={a.kpis.urgentOpen ? "alert" : "default"} sub={a.kpis.urgentOpen ? "Needs attention" : "All clear"} />
+        <KpiTile label="Unassigned" value={a.kpis.unassigned} sub="Waiting for a tech" />
+        <KpiTile label="Submitted · 30d" value={a.kpis.submitted} change={a.kpis.submittedChange} />
+        <KpiTile label="Resolved · 30d" value={a.kpis.resolved} change={a.kpis.resolvedChange} changeGood={(a.kpis.resolvedChange ?? 0) > 0} />
+        <KpiTile label="Avg. time to fix" value={formatHours(a.kpis.avgResolveHours)} tone="gold" sub={`Median ${formatHours(a.kpis.medianResolveHours)}`} />
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Panel
-          title="Submitted vs. resolved"
-          subtitle={a.weekly ? "Requests per week" : "Requests per day"}
-          className="lg:col-span-2"
-        >
-          <TrendChart data={a.trend} />
-          <details className="mt-3 text-sm">
-            <summary className="cursor-pointer font-medium text-gt-navy">View as table</summary>
-            <div className="mt-2 max-h-60 overflow-auto">
-              <table className="w-full text-left text-sm tabular-nums">
-                <thead className="sticky top-0 bg-white text-xs text-slate-500 uppercase">
-                  <tr><th className="py-1">{a.weekly ? "Week" : "Day"}</th><th className="py-1 text-right">Submitted</th><th className="py-1 text-right">Resolved</th></tr>
+      <Suspense>
+        <AdminCampusMap counts={openByOsmId} buildings={buildings.map((b) => ({ id: b.id, osm_id: b.osm_id }))} />
+      </Suspense>
+
+      <section className="rounded-3xl border border-line bg-white shadow-sm" aria-labelledby="requests-heading">
+        <div className="flex flex-wrap items-center gap-3 border-b border-line p-4">
+          <h2 id="requests-heading" className="font-display text-xl font-bold">
+            Requests <span className="font-mono text-base text-ink-muted">{rows.length}</span>
+          </h2>
+          {buildingName && (
+            <Link href={keep({ building: null, ticket: null })} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gt-navy px-3 text-sm font-semibold text-white">
+              {buildingName} <XIcon className="size-4" />
+              <span className="sr-only">Clear building filter</span>
+            </Link>
+          )}
+          <Suspense>
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <SearchBox />
+              <FilterSelectStatus />
+              <FilterSelect param="priority" label="Priority" options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_META[p].label }))} />
+              <FilterSelect param="area" label="Area" options={AREAS.map((x) => ({ value: x, label: AREA_META[x].label }))} />
+              <FilterSelect
+                param="building"
+                label="Building"
+                className="col-span-2 sm:col-span-1 sm:max-w-xs"
+                options={buildings.filter((b) => !area || b.area === area).map((b) => ({ value: String(b.id), label: b.name }))}
+              />
+            </div>
+          </Suspense>
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="p-4">
+            <EmptyState title="No requests match">Try another building, or clear a filter.</EmptyState>
+          </div>
+        ) : (
+          <>
+            {/* Laptop: table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-sm">
+                <thead className="text-[0.7rem] tracking-wide text-ink-muted uppercase">
+                  <tr className="border-b border-line">
+                    <th className="px-4 py-2.5 font-semibold">#</th>
+                    <th className="px-2 py-2.5 font-semibold">Request</th>
+                    <th className="px-2 py-2.5 font-semibold">Status</th>
+                    <th className="px-2 py-2.5 font-semibold">Priority</th>
+                    <th className="px-2 py-2.5 font-semibold">Area</th>
+                    <th className="px-2 py-2.5 font-semibold">Technician</th>
+                    <th className="px-4 py-2.5 text-right font-semibold">Age</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {a.trend.map((p) => (
-                    <tr key={p.key} className="border-t border-slate-100">
-                      <td className="py-1">{p.label}</td>
-                      <td className="py-1 text-right">{p.submitted}</td>
-                      <td className="py-1 text-right">{p.resolved}</td>
-                    </tr>
-                  ))}
+                  {rows.slice(0, ROW_LIMIT).map((t) => {
+                    const href = keep({ ticket: String(t.id) });
+                    return (
+                      <tr key={t.id} className={`border-b border-line last:border-0 hover:bg-navy-50 ${ticketId === t.id ? "bg-gold-50" : ""}`}>
+                        <td className="px-4 py-2.5 font-mono text-ink-muted">
+                          <Link href={href} scroll={false} className="hover:text-ink">
+                            {t.id}
+                          </Link>
+                        </td>
+                        <td className="max-w-80 px-2 py-2.5">
+                          <Link href={href} scroll={false} className="block font-semibold hover:underline">
+                            <span className="block truncate">{t.title}</span>
+                            <span className="block truncate text-xs font-normal text-ink-muted">
+                              {t.building?.name}
+                              {t.location_detail ? ` · ${t.location_detail}` : ""}
+                            </span>
+                          </Link>
+                        </td>
+                        <td className="px-2 py-2.5"><StatusBadge status={t.status} /></td>
+                        <td className="px-2 py-2.5"><PriorityBadge priority={t.priority} /></td>
+                        <td className="px-2 py-2.5"><AreaBadge area={t.area} /></td>
+                        <td className="px-2 py-2.5 text-ink-muted">{t.assignee?.name ?? "—"}</td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap text-ink-muted">{timeAgo(t.created_at)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          </details>
-        </Panel>
+            {/* Phone: stacked rows */}
+            <ul className="divide-y divide-line md:hidden">
+              {rows.slice(0, ROW_LIMIT).map((t) => (
+                <li key={t.id}>
+                  <Link href={keep({ ticket: String(t.id) })} scroll={false} className="block px-4 py-3 hover:bg-navy-50">
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={t.status} />
+                      <PriorityBadge priority={t.priority} />
+                      <span className="ml-auto font-mono text-xs text-ink-muted">#{t.id}</span>
+                    </div>
+                    <p className="mt-1.5 truncate font-semibold">{t.title}</p>
+                    <p className="truncate text-xs text-ink-muted">
+                      {t.building?.name} · {AREA_META[t.area].label} · {t.assignee?.name ?? "Unassigned"} · {timeAgo(t.created_at)}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {rows.length > ROW_LIMIT && <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">Showing the first {ROW_LIMIT} of {rows.length}. Narrow the filters to see the rest.</p>}
+          </>
+        )}
+      </section>
 
-        <Panel title="Status of new requests" subtitle={`${statusTotal} submitted in the last ${days} days`}>
-          {statusTotal === 0 ? (
-            <p className="text-sm text-slate-500">No requests in this range.</p>
-          ) : (
-            <>
-              <div className="flex h-4 w-full gap-0.5 overflow-hidden rounded-full" role="img" aria-label="Status breakdown">
-                {a.statusCounts.filter((s) => s.value > 0).map((s) => (
-                  <div key={s.status} className={STATUS_META[s.status].dot} style={{ width: `${(s.value / statusTotal) * 100}%` }} title={`${STATUS_META[s.status].label}: ${s.value}`} />
-                ))}
-              </div>
-              <ul className="mt-4 space-y-2.5">
-                {a.statusCounts.map((s) => (
-                  <li key={s.status} className="flex items-center gap-2.5 text-sm">
-                    <span className={`size-3 rounded-sm ${STATUS_META[s.status].dot}`} aria-hidden="true" />
-                    <span className="text-slate-700">{STATUS_META[s.status].label}</span>
-                    <span className="ml-auto font-semibold text-slate-900 tabular-nums">{s.value}</span>
-                    <span className="w-10 text-right text-xs text-slate-500 tabular-nums">{Math.round((s.value / statusTotal) * 100)}%</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          {a.hotspots.length > 0 && (
-            <div className="mt-6 border-t border-slate-100 pt-4">
-              <h3 className="flex items-center gap-1.5 text-sm font-bold text-gt-navy">
-                <AlertIcon className="size-4" /> Recurring hotspots
-              </h3>
-              <p className="text-xs text-slate-500">Same issue type reported 3+ times in one building</p>
-              <ul className="mt-2 space-y-1.5 text-sm">
-                {a.hotspots.map((h) => (
-                  <li key={h.building + h.category} className="flex gap-2">
-                    <span className="min-w-0 flex-1 truncate text-slate-700">
-                      <span className="font-medium text-slate-900">{h.building}</span> · {h.category}
-                    </span>
-                    <span className="font-semibold tabular-nums">{h.value}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </Panel>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Panel title="Top 10 buildings" subtitle="By requests submitted">
-          {a.topBuildings.length ? <HBarChart data={a.topBuildings} seriesName="Requests" /> : <Empty />}
-        </Panel>
-        <Panel title="Requests by category" subtitle="By requests submitted">
-          {a.byCategory.length ? <HBarChart data={a.byCategory} seriesName="Requests" /> : <Empty />}
-        </Panel>
-        <Panel title="Average time to resolve" subtitle="By category, for requests resolved in this range">
-          {a.resolveByCategory.length ? (
-            <HBarChart data={a.resolveByCategory} seriesName="Avg. time" unit="hours" />
-          ) : (
-            <Empty />
-          )}
-        </Panel>
-        <Panel title="Technician workload" subtitle={`Open work now · resolved in last ${days} days`}>
-          <div className="-mx-1 overflow-x-auto">
-            <table className="w-full min-w-[420px] text-left text-sm tabular-nums">
-              <thead className="text-xs text-slate-500 uppercase">
-                <tr>
-                  <th className="px-1 py-2 font-medium">Technician</th>
-                  <th className="px-1 py-2 text-right font-medium">Assigned</th>
-                  <th className="px-1 py-2 text-right font-medium">In progress</th>
-                  <th className="px-1 py-2 text-right font-medium">Resolved</th>
-                  <th className="px-1 py-2 text-right font-medium">Avg. time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {a.workload.map((w) => (
-                  <tr key={w.id} className="border-t border-slate-100">
-                    <td className="px-1 py-2.5 font-medium text-slate-900">{w.name}</td>
-                    <td className="px-1 py-2.5 text-right">{w.assigned}</td>
-                    <td className="px-1 py-2.5 text-right">{w.inProgress}</td>
-                    <td className="px-1 py-2.5 text-right font-semibold">{w.resolved}</td>
-                    <td className="px-1 py-2.5 text-right">{formatHours(w.avgResolveHours)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-      </div>
-    </div>
+      {drawerTicket && (
+        <Suspense>
+          <AdminDrawer ticketId={drawerTicket.id} title={drawerTicket.title}>
+            <TicketDetail
+              ticket={drawerTicket}
+              events={drawerEvents}
+              actions={<TicketActions ticket={drawerTicket} viewer={{ id: user.id, role: user.role }} technicians={technicians.map((t) => ({ id: t.id, name: t.name }))} />}
+            />
+            <Link href={`/requests/${drawerTicket.id}`} className="mt-4 inline-block text-sm font-semibold text-ink underline decoration-gt-gold decoration-2 underline-offset-4">
+              Open full page
+            </Link>
+          </AdminDrawer>
+        </Suspense>
+      )}
+    </PageContainer>
   );
 }
 
-function Panel({ title, subtitle, children, className = "" }: { title: string; subtitle?: string; children: ReactNode; className?: string }) {
+function FilterSelectStatus() {
   return (
-    <section className={`card p-4 md:p-5 ${className}`}>
-      <h2 className="font-bold text-gt-navy">{title}</h2>
-      {subtitle && <p className="mb-3 text-xs text-slate-500">{subtitle}</p>}
-      {children}
-    </section>
-  );
-}
-
-function Empty() {
-  return <p className="py-8 text-center text-sm text-slate-500">No data in this range.</p>;
-}
-
-function Kpi({
-  label,
-  value,
-  sub,
-  change,
-  days,
-  goodWhenUp = false,
-  neutral = false,
-  alert = false,
-  className = "",
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  change?: number | null;
-  days?: number;
-  goodWhenUp?: boolean;
-  /** More/less isn't good or bad (e.g. submissions) — show the change in gray. */
-  neutral?: boolean;
-  alert?: boolean;
-  className?: string;
-}) {
-  let delta: ReactNode = null;
-  if (change != null && Number.isFinite(change)) {
-    const up = change > 0;
-    const good = neutral || Math.abs(change) < 1 ? null : goodWhenUp ? up : !up;
-    delta = (
-      <span className={`font-semibold ${good == null ? "text-slate-500" : good ? "text-green-700" : "text-red-700"}`}>
-        {up ? "▲" : change < 0 ? "▼" : ""} {Math.abs(Math.round(change))}%
-        <span className="font-normal text-slate-500"> vs prev {days}d</span>
-      </span>
-    );
-  }
-  return (
-    <div className={`card p-4 ${alert ? "border-red-300 bg-red-50" : ""} ${className}`}>
-      <div className={`text-xs font-semibold tracking-wide uppercase ${alert ? "text-red-800" : "text-slate-500"}`}>{label}</div>
-      <div className={`mt-1 text-3xl font-bold tabular-nums ${alert ? "text-red-800" : "text-gt-navy"}`}>{value}</div>
-      {delta && <div className="mt-1 text-xs">{delta}</div>}
-      {sub && <div className="mt-0.5 text-xs text-slate-600">{sub}</div>}
-    </div>
+    <FilterSelect
+      param="status"
+      label="Status"
+      emptyLabel="Status: Open"
+      options={[{ value: "all", label: "Any status" }, ...STATUSES.map((s) => ({ value: s, label: STATUS_META[s].label }))]}
+    />
   );
 }

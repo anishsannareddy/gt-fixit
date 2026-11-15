@@ -5,7 +5,7 @@ import type { Building, TicketEvent, TicketWithRelations, User } from "./types";
 /** Select string that joins building, reporter and assignee onto a request. */
 export const TICKET_SELECT = `
   *,
-  building:buildings(id, name, short_name, type),
+  building:buildings(id, name, short_name, type, number),
   reporter:users!requests_reporter_id_fkey(id, name),
   assignee:users!requests_assignee_id_fkey(id, name)
 `;
@@ -21,13 +21,13 @@ export async function getBuildings(): Promise<Building[]> {
 
 export async function getDemoUsers(): Promise<User[]> {
   return must(
-    await db().from("users").select("id, name, role, title, is_demo").eq("is_demo", true).order("name"),
+    await db().from("users").select("id, name, role, title, email, is_demo").eq("is_demo", true).order("name"),
   );
 }
 
 export async function getTechnicians(): Promise<User[]> {
   return must(
-    await db().from("users").select("id, name, role, title, is_demo").eq("role", "technician").order("name"),
+    await db().from("users").select("id, name, role, title, email, is_demo").eq("role", "technician").order("name"),
   );
 }
 

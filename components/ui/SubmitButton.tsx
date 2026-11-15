@@ -2,20 +2,20 @@
 
 import { useFormStatus } from "react-dom";
 import type { ReactNode } from "react";
+import { buttonClass } from "./Button";
 
-/** A submit button that disables itself and shows a pending label while its form's action runs. */
+/** Submit button that disables itself and shows a pending label while its form's server action runs. */
 export function SubmitButton({
   children,
   pendingLabel = "Saving…",
-  className = "btn-primary",
+  ...style
 }: {
   children: ReactNode;
   pendingLabel?: string;
-  className?: string;
-}) {
+} & Parameters<typeof buttonClass>[0]) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={className}>
+    <button type="submit" disabled={pending} className={buttonClass(style)}>
       {pending ? pendingLabel : children}
     </button>
   );

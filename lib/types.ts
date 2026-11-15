@@ -1,3 +1,5 @@
+import type { Area } from "./campus/areas";
+
 export type Role = "reporter" | "technician" | "admin";
 export type Status = "submitted" | "assigned" | "in_progress" | "resolved";
 export type Priority = "low" | "medium" | "high" | "urgent";
@@ -8,6 +10,14 @@ export type Building = {
   name: string;
   short_name: string | null;
   type: BuildingType;
+  /** GT building number, when known. */
+  number: string | null;
+  /** GT Facilities maintenance area. */
+  area: Area;
+  lat: number | null;
+  lng: number | null;
+  /** OpenStreetMap id: links this row to its footprint in the 3D campus. */
+  osm_id: string | null;
 };
 
 export type User = {
@@ -15,6 +25,8 @@ export type User = {
   name: string;
   role: Role;
   title: string | null;
+  /** Sign-in email (null for seeded background reporters, who have no login). */
+  email: string | null;
   is_demo: boolean;
 };
 
@@ -25,6 +37,8 @@ export type Ticket = {
   description: string;
   building_id: number;
   location_detail: string;
+  /** Maintenance area, copied from the building when the request was created. */
+  area: Area;
   category: string;
   priority: Priority;
   status: Status;
@@ -38,7 +52,7 @@ export type Ticket = {
 
 /** Ticket joined with the related rows most screens need. */
 export type TicketWithRelations = Ticket & {
-  building: Pick<Building, "id" | "name" | "short_name" | "type"> | null;
+  building: Pick<Building, "id" | "name" | "short_name" | "type" | "number"> | null;
   reporter: Pick<User, "id" | "name"> | null;
   assignee: Pick<User, "id" | "name"> | null;
 };

@@ -2,8 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/demo-auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { CATEGORIES, PHOTO_BUCKET, PRIORITIES } from "@/lib/constants";
 import type { Priority } from "@/lib/types";
@@ -14,17 +13,17 @@ import type { Priority } from "@/lib/types";
  * Vercel's ~4.5MB request body limit on server functions.
  */
 export async function createPhotoUploadUrl() {
-  await requireUser();
+  await requireUser(["reporter"]);
   const path = `requests/${randomUUID()}.jpg`;
   const { data, error } = await db().storage.from(PHOTO_BUCKET).createSignedUploadUrl(path);
   if (error || !data) return { error: error?.message ?? "Could not prepare upload" } as const;
   return { path: data.path, token: data.token } as const;
 }
 
-export type ReportState = { error?: string; fieldErrors?: Record<string, string> } | undefined;
+export type ReportState = { error?: string; fieldErrors?: Record<string, string>; created?: { id: number } } | undefined;
 
 export async function createRequest(_prev: ReportState, formData: FormData): Promise<ReportState> {
-  const user = await requireUser();
+  const user = await requireUser(["reporter"]);
 
   const get = (k: string) => String(formData.get(k) ?? "").trim();
   const buildingId = Number(get("building_id"));
@@ -51,12 +50,17 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
     photoUrl = db().storage.from(PHOTO_BUCKET).getPublicUrl(photoPath).data.publicUrl;
   }
 
+  // Routing: the request inherits its building's maintenance area.
+  const { data: building } = await db().from("buildings").select("area").eq("id", buildingId).maybeSingle();
+  if (!building) return { fieldErrors: { building_id: "Choose a building." } };
+
   const { data, error } = await db()
     .from("requests")
     .insert({
       title,
       description,
       building_id: buildingId,
+      area: building.area,
       location_detail: locationDetail.slice(0, 120),
       category,
       priority,
@@ -76,6 +80,7 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
 
   revalidatePath("/my-requests");
   revalidatePath("/tech");
-  revalidatePath("/admin");
-  redirect(`/requests/${data.id}?new=1`);
+  revalidatePath("/admin", "layout");
+  // The report sheet shows a success screen with a link to the new request.
+  return { created: { id: data.id } };
 }
