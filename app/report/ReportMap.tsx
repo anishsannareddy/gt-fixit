@@ -7,16 +7,22 @@ import { BuildingSearch } from "@/components/campus/BuildingSearch";
 import { CampusCanvas } from "@/components/campus/CampusCanvas";
 import { AreaBadge } from "@/components/ui/Badge";
 import { Button, buttonClass } from "@/components/ui/Button";
+import { PlusIcon } from "@/components/ui/Icons";
 import { GemCheck } from "@/components/ui/Illustration";
 import { Sheet } from "@/components/ui/Sheet";
 import { useIsDesktop } from "@/components/ui/useMediaQuery";
 import { AREA_META } from "@/lib/campus/areas";
+import type { ActiveIssue } from "@/lib/issues";
 import type { Building } from "@/lib/types";
+import { IssueCard } from "@/components/issues/IssueCard";
+import { issueKey } from "@/components/issues/key";
 import { REPORT_FORM_ID, ReportForm } from "./ReportForm";
 
 /** Student home: the 3D campus as a building picker. Pick a building (tap it or search) to open the report form. */
-export function ReportMap({ buildings }: { buildings: Building[] }) {
+export function ReportMap({ buildings, issues }: { buildings: Building[]; issues: ActiveIssue[] }) {
   const [selected, setSelected] = useState<Building | null>(null);
+  // A building with active issues shows them first; "Report a new issue" switches to the form.
+  const [reporting, setReporting] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<number | null>(null);
   const desktop = useIsDesktop();
@@ -25,8 +31,11 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
   function choose(b: Building | null) {
     setBusy(null);
     setCreatedId(null);
+    setReporting(false);
     setSelected(b);
   }
+  const here = selected ? issues.filter((i) => i.building.id === selected.id) : [];
+  const showIssues = here.length > 0 && !reporting && !createdId;
   const onCreated = useCallback((id: number) => setCreatedId(id), []);
 
   return (
@@ -61,10 +70,14 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
       <Sheet
         open={selected !== null}
         onClose={() => choose(null)}
-        eyebrow={createdId ? "Request sent" : "Report an issue"}
+        eyebrow={createdId ? "Request sent" : showIssues ? "Active issues here" : "Report an issue"}
         title={selected?.name ?? ""}
         footer={
-          createdId ? undefined : (
+          createdId ? undefined : showIssues ? (
+            <Button variant="gold" size="lg" full onClick={() => setReporting(true)}>
+              <PlusIcon className="size-5" /> Report a new issue
+            </Button>
+          ) : (
             <button type="submit" form={REPORT_FORM_ID} disabled={busy !== null} className={buttonClass({ variant: "gold", size: "lg", full: true })}>
               {busy ?? "Submit request"}
             </button>
@@ -73,6 +86,17 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
       >
         {selected && createdId ? (
           <Success id={createdId} building={selected} onAnother={() => choose(null)} />
+        ) : selected && showIssues ? (
+          <div>
+            <p className="mb-4 rounded-2xl bg-gold-50 px-4 py-3 text-sm font-medium text-ink ring-1 ring-gt-gold/50">
+              Already reported? Tap <strong>Me too</strong>. Otherwise, report a new issue.
+            </p>
+            <div className="space-y-2.5">
+              {here.map((i) => (
+                <IssueCard key={issueKey(i)} issue={i} compact />
+              ))}
+            </div>
+          </div>
         ) : selected ? (
           <>
             <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">

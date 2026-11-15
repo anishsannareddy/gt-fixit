@@ -7,6 +7,7 @@ config({ path: ".env.local", quiet: true });
 export const PASSWORD = process.env.DEMO_ACCOUNT_PASSWORD || "GTFixIt-Demo-2026!";
 export const ACCOUNTS = {
   student: "demo.student@gatech.edu",
+  faculty: "demo.faculty@gatech.edu",
   tech: "demo.tech@gatech.edu",
   admin: "demo.admin@gatech.edu",
 } as const;

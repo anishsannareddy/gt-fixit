@@ -15,7 +15,7 @@ import type { Role } from "@/lib/types";
 
 /** Which roles may open each protected section. Request detail pages decide access per request. */
 const SECTIONS: [RegExp, Role[]][] = [
-  [/^\/(report|my-requests)(\/|$)/, ["reporter"]],
+  [/^\/(report|my-requests|issues)(\/|$)/, ["reporter"]],
   [/^\/tech(\/|$)/, ["technician", "admin"]],
   [/^\/admin(\/|$)/, ["admin"]],
   [/^\/requests(\/|$)/, ["reporter", "technician", "admin"]],

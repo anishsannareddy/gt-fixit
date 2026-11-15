@@ -19,7 +19,7 @@ import { PageContainer, PageHeader } from "@/components/ui/Surface";
 import { TicketActions } from "@/components/tickets/TicketActions";
 import { TicketDetail } from "@/components/tickets/TicketDetail";
 import { AdminDrawer } from "./AdminDrawer";
-import { SearchBox } from "./SearchBox";
+import { SearchBox } from "@/components/ui/SearchBox";
 
 export const metadata: Metadata = { title: "Command Center" };
 
