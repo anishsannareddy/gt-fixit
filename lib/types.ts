@@ -9,6 +9,8 @@ export type Building = {
   id: number;
   name: string;
   short_name: string | null;
+  /** Other names people search for (old names, map labels). */
+  aliases: string[];
   type: BuildingType;
   /** GT building number, when known. */
   number: string | null;

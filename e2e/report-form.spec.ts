@@ -65,3 +65,17 @@ test("a private request stays out of Active issues until the reporter makes it p
     await deleteRequests([id]);
   }
 });
+
+test("George Tower is searchable (also by alias) and reportable; old names still find renamed buildings", async ({ browser }) => {
+  const page = await signIn(browser, ACCOUNTS.student);
+  await page.goto("/report");
+  const search = page.getByRole("combobox", { name: "Search buildings" });
+  await search.fill("Flag Building");
+  await expect(page.getByRole("option", { name: /Charles A. Smithgall, Jr. Student Services Building/ })).toBeVisible();
+  await search.fill("Scheller Tower");
+  await page.getByRole("option", { name: /George Tower \/ Scheller Tower/ }).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet.getByText("George Tower / Scheller Tower").first()).toBeVisible();
+  const newReport = page.getByRole("button", { name: "Report a new issue" });
+  await expect(newReport.or(sheet.locator("#room"))).toBeVisible();
+});

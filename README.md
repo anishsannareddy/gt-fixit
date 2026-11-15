@@ -28,7 +28,7 @@ npm run dev                    # http://localhost:3000
 
 1. Create a free project at [supabase.com](https://supabase.com) (region: East US).
 2. **SQL Editor → New query** → paste all of [`supabase/schema.sql`](supabase/schema.sql) → **Run**.
-   *Already set up before the AI features?* Instead paste [`supabase/migrations/001_ai_features.sql`](supabase/migrations/001_ai_features.sql) → **Run** (adds tables and columns only; keeps your data; safe to run twice), then [`002_visibility_review_delete.sql`](supabase/migrations/002_visibility_review_delete.sql) (private requests, Smart Sort review flag, request deletion). Run them in order.
+   *Already set up before the AI features?* Instead paste [`supabase/migrations/001_ai_features.sql`](supabase/migrations/001_ai_features.sql) → **Run** (adds tables and columns only; keeps your data; safe to run twice), then [`002_visibility_review_delete.sql`](supabase/migrations/002_visibility_review_delete.sql) (private requests, Smart Sort review flag, request deletion), then [`003_building_aliases.sql`](supabase/migrations/003_building_aliases.sql) (searchable building aliases). Run them in order.
 3. Copy **Project URL**, **anon/publishable key**, and **service_role/secret key** from *Project Settings → API* into `.env.local`.
 4. **Authentication → Sign In / Providers:** keep **Email** enabled and turn **off** "Allow new users to sign up".
    Our server creates accounts itself (only for @gatech.edu emails), so public sign-up through the Supabase API must be closed.
@@ -188,3 +188,7 @@ proxy.ts                 Refreshes the sign-in session; logged-out visitors go t
 
 - **Sign-in** is email + password with no email verification (accounts are created on the server). Next: GT single sign-on (CAS), or Supabase email verification with a real email provider.
 - Ideas: QR codes posted in each building that pre-fill the form · email/push notifications on status changes · SLA alerts for urgent tickets · campus map view · AI reading the photo too · resolve every report in an issue group at once.
+
+
+### Building names
+Building names, areas and search aliases come from `data/campus.json` + `data/zones.json`, corrected in `data/zone-overrides.json` (see `data/building-name-changes.md`). `npm run buildings:sync` updates the live `buildings` table in place; building ids never change, so existing requests keep their building.

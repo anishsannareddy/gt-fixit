@@ -2,7 +2,8 @@
  * Seeds Supabase with realistic demo data.
  *   npm run seed
  *
- * Safe to re-run: it deletes all requests/users/buildings first, then reinserts.
+ * Safe to re-run: it deletes all requests and users first, then reinserts. Buildings are upserted by
+ * OpenStreetMap id (never deleted), so their database ids stay the same across re-seeds.
  * Uses a fixed random seed so everyone on the team gets the same-looking data
  * (dates are relative to "now", so the dashboard always looks current).
  */
@@ -10,7 +11,7 @@ import { config } from "dotenv";
 import { escalateForHazard, isReviewedUrgency } from "../lib/ai/safety";
 import { createClient } from "@supabase/supabase-js";
 import { AREA_META, type Area } from "../lib/campus/areas";
-import { campusBuildings, isGT, type CampusBuildingInfo } from "../lib/campus/zones";
+import { syncBuildings } from "./buildings";
 import { DEMO_ACCOUNTS, demoPassword } from "../lib/demo-accounts";
 
 config({ path: ".env.local" });
@@ -51,39 +52,6 @@ const HOUR = 3_600_000;
 
 // ---------- reference data ----------
 type BType = "residence" | "academic" | "dining" | "athletic" | "other";
-/**
- * Buildings come from the real campus data: every OpenStreetMap footprint that the GT Facilities
- * zone map colours with a maintenance area (data/campus.json + data/zones.json + data/zone-overrides.json).
- */
-function shortName(name: string): string {
-  const short = name
-    .replace(/ (Residence Hall|Building|Memorial Library|Apartments|Hall)\b/g, "")
-    .replace(/^(The|Georgia Tech) /, "")
-    .trim();
-  return short.length > 24 ? short.slice(0, 23).trimEnd() + "…" : short;
-}
-
-function typeOf(b: CampusBuildingInfo & { zone: Area }): BType {
-  const name = b.name ?? "";
-  if (/dining|brittain/i.test(name)) return "dining";
-  if (b.zone === "housing") return "residence";
-  if (b.zone === "gtaa" || /recreation|stadium|pavilion|coliseum|gym/i.test(name)) return "athletic";
-  if (b.zone === "parking" || /parking|deck/i.test(name)) return "other";
-  return "academic";
-}
-
-function campusRows() {
-  const used = new Map<string, number>();
-  return campusBuildings.filter(isGT).map((b) => {
-    // Names must be unique in the table; OSM has a few repeats and some unnamed buildings.
-    const base = b.name ?? `Unnamed building (${AREA_META[b.zone].label})`;
-    const n = (used.get(base) ?? 0) + 1;
-    used.set(base, n);
-    const name = n === 1 ? base : `${base} #${n}`;
-    return { name, short_name: shortName(name), type: typeOf(b), number: b.number, area: b.zone, lat: b.lat, lng: b.lng, osm_id: b.id };
-  });
-}
-
 type U = "low" | "medium" | "high" | "urgent";
 /** One kind of issue. `ai` is the pre-baked AI rating, so the demo works without the OpenAI API. */
 type Seed = { title: string; desc: string; priority: [string, number][]; ai: [U, string, boolean?] };
@@ -428,10 +396,6 @@ async function wipe() {
     const { error } = await supabase.from("users").delete().not("id", "is", null);
     if (error) throw new Error(`wipe users: ${error.message}`);
   }
-  {
-    const { error } = await supabase.from("buildings").delete().gte("id", 0);
-    if (error) throw new Error(`wipe buildings: ${error.message}`);
-  }
   console.log("✓ Cleared old data");
 }
 
@@ -440,12 +404,7 @@ async function main() {
   await ensureBucket();
   await wipe();
 
-  const buildings = (await insertChunked("buildings", campusRows(), "id, name, type, area")) as {
-    id: number;
-    name: string;
-    type: BType;
-    area: Area;
-  }[];
+  const buildings = (await syncBuildings(supabase)) as { id: number; name: string; type: BType; area: Area }[];
   const perArea = buildings.reduce<Record<string, number>>((m, b) => ((m[b.area] = (m[b.area] ?? 0) + 1), m), {});
   console.log(`✓ ${buildings.length} GT buildings (${Object.entries(perArea).map(([a, n]) => `${AREA_META[a as Area].label}: ${n}`).join(", ")})`);
 

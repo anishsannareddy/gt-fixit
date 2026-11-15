@@ -18,6 +18,7 @@ create table buildings (
   id          bigint generated always as identity primary key,
   name        text not null unique,
   short_name  text,
+  aliases     text[] not null default '{}', -- other names people search for (old names, map labels)
   type        text not null check (type in ('residence', 'academic', 'dining', 'athletic', 'other')),
   number      text,                 -- GT building number, when known
   -- GT Facilities maintenance area that looks after this building

@@ -5,13 +5,15 @@ import { isArea, type Area, type Zone } from "./areas";
 import type { CampusData, RawBuilding } from "./geometry";
 
 /** Hand corrections in data/zone-overrides.json. `area: null` means "not a GT building". */
-type Override = { area?: Zone | null; name?: string; number?: string };
+type Override = { area?: Zone | null; name?: string; number?: string; aliases?: string[]; note?: string };
 
 export type CampusBuildingInfo = RawBuilding & {
   /** Maintenance area, "non_gt", or null for surrounding city buildings. */
   zone: Zone | null;
   /** GT building number, when known. */
   number: string | null;
+  /** Other names people search for (old names, map labels). */
+  aliases: string[];
 };
 
 const campus = campusJson as unknown as CampusData;
@@ -22,7 +24,7 @@ const overrides = overridesJson as unknown as Record<string, Override>;
 export const campusBuildings: CampusBuildingInfo[] = campus.buildings.map((b) => {
   const o = overrides[b.id];
   const zone = o && "area" in o ? (o.area ?? null) : (zones[b.id]?.area ?? null);
-  return { ...b, name: o?.name ?? b.name, zone, number: o?.number ?? b.ref ?? null };
+  return { ...b, name: o?.name ?? b.name, zone, number: o?.number ?? b.ref ?? null, aliases: o?.aliases ?? [] };
 });
 
 export const campusRoads = campus.roads;

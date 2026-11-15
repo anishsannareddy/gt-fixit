@@ -17,7 +17,13 @@ export function BuildingSearch({ buildings, onPick, className }: { buildings: Bu
     const q = query.trim().toLowerCase();
     if (!q) return [];
     return buildings
-      .filter((b) => b.name.toLowerCase().includes(q) || b.number?.toLowerCase().includes(q) || AREA_META[b.area].label.toLowerCase() === q)
+      .filter(
+        (b) =>
+          b.name.toLowerCase().includes(q) ||
+          (b.aliases ?? []).some((a) => a.toLowerCase().includes(q)) ||
+          b.number?.toLowerCase().includes(q) ||
+          AREA_META[b.area].label.toLowerCase() === q,
+      )
       .sort((a, b) => Number(b.name.toLowerCase().startsWith(q)) - Number(a.name.toLowerCase().startsWith(q)) || a.name.localeCompare(b.name))
       .slice(0, 8);
   }, [buildings, query]);
