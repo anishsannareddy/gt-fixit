@@ -2,19 +2,19 @@ import { AREA_META, type Zone } from "@/lib/campus/areas";
 import type { Priority, Status } from "@/lib/types";
 import { cn } from "./cn";
 
-// Colors tuned for dark surfaces. A text label always accompanies the color.
+// Colors tuned for white surfaces (text passes 4.5:1 on its tinted background). A text label always accompanies the color.
 export const STATUS_UI: Record<Status, { label: string; text: string; bg: string; dot: string }> = {
-  submitted: { label: "Submitted", text: "text-slate-200", bg: "bg-slate-400/15 ring-slate-300/25", dot: "bg-slate-300" },
-  assigned: { label: "Assigned", text: "text-sky-200", bg: "bg-sky-400/15 ring-sky-300/30", dot: "bg-sky-400" },
-  in_progress: { label: "In progress", text: "text-amber-200", bg: "bg-amber-400/15 ring-amber-300/30", dot: "bg-amber-400" },
-  resolved: { label: "Resolved", text: "text-emerald-200", bg: "bg-emerald-400/15 ring-emerald-300/30", dot: "bg-emerald-400" },
+  submitted: { label: "Submitted", text: "text-slate-700", bg: "bg-slate-100 ring-slate-300", dot: "bg-slate-500" },
+  assigned: { label: "Assigned", text: "text-sky-800", bg: "bg-sky-50 ring-sky-200", dot: "bg-sky-600" },
+  in_progress: { label: "In progress", text: "text-amber-800", bg: "bg-amber-50 ring-amber-200", dot: "bg-amber-500" },
+  resolved: { label: "Resolved", text: "text-emerald-800", bg: "bg-emerald-50 ring-emerald-200", dot: "bg-emerald-600" },
 };
 
 export const PRIORITY_UI: Record<Priority, { label: string; text: string; bg: string }> = {
-  low: { label: "Low", text: "text-white/70", bg: "bg-white/8 ring-white/15" },
-  medium: { label: "Medium", text: "text-sky-100", bg: "bg-sky-300/12 ring-sky-200/25" },
-  high: { label: "High", text: "text-orange-200", bg: "bg-orange-400/15 ring-orange-300/35" },
-  urgent: { label: "Urgent", text: "text-red-100", bg: "bg-red-500/25 ring-red-400/50" },
+  low: { label: "Low", text: "text-slate-700", bg: "bg-slate-50 ring-slate-200" },
+  medium: { label: "Medium", text: "text-sky-800", bg: "bg-sky-50 ring-sky-200" },
+  high: { label: "High", text: "text-orange-800", bg: "bg-orange-50 ring-orange-200" },
+  urgent: { label: "Urgent", text: "text-red-800", bg: "bg-red-50 ring-red-300" },
 };
 
 const PILL = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset whitespace-nowrap";
@@ -42,7 +42,7 @@ export function PriorityBadge({ priority, className }: { priority: Priority; cla
 /** Neutral pill for counts, tags, etc. */
 export function Badge({ children, tone = "neutral", className }: { children: React.ReactNode; tone?: "neutral" | "gold"; className?: string }) {
   return (
-    <span className={cn(PILL, tone === "gold" ? "bg-gt-gold/20 text-gold-light ring-gt-gold/40" : "bg-white/8 text-white/75 ring-white/15", className)}>
+    <span className={cn(PILL, tone === "gold" ? "bg-gold-50 text-gold-ink ring-gt-gold/50" : "bg-slate-100 text-ink-muted ring-slate-300", className)}>
       {children}
     </span>
   );
@@ -51,8 +51,8 @@ export function Badge({ children, tone = "neutral", className }: { children: Rea
 /** Maintenance area: colour dot plus the area name (never colour alone). */
 export function AreaBadge({ area, className }: { area: Zone; className?: string }) {
   return (
-    <span className={cn(PILL, "bg-white/8 text-white/85 ring-white/15", className)}>
-      <span className="size-2 rounded-full ring-1 ring-white/30" style={{ background: AREA_META[area].color }} aria-hidden="true" />
+    <span className={cn(PILL, "bg-white text-ink ring-slate-300", className)}>
+      <span className="size-2 rounded-full ring-1 ring-slate-300" style={{ background: AREA_META[area].color }} aria-hidden="true" />
       {AREA_META[area].label}
     </span>
   );

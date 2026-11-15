@@ -46,8 +46,8 @@ export default function DesignSystemPage() {
           <div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-11">
             {SWATCHES.map(([name, cls]) => (
               <div key={name}>
-                <div className={`h-12 rounded-xl border border-white/15 ${cls}`} />
-                <div className="mt-1 font-mono text-[0.65rem] text-white/60">{name}</div>
+                <div className={`h-12 rounded-xl border border-line ${cls}`} />
+                <div className="mt-1 font-mono text-[0.65rem] text-ink-muted">{name}</div>
               </div>
             ))}
           </div>
@@ -55,10 +55,10 @@ export default function DesignSystemPage() {
 
         <Section title="Type">
           <p className="font-display text-6xl leading-none font-bold tracking-tight md:text-7xl">
-            Fix it <span className="text-gt-gold">fast.</span>
+            Fix it <span className="text-gold-ink">fast.</span>
           </p>
           <p className="mt-3 font-display text-2xl font-bold">Space Grotesk for headings</p>
-          <p className="mt-1 max-w-xl text-white/70">Inter for body text. It stays readable at small sizes on a phone, in sunlight, halfway up a ladder.</p>
+          <p className="mt-1 max-w-xl text-ink-muted">Inter for body text. It stays readable at small sizes on a phone, in sunlight, halfway up a ladder.</p>
           <p className="mt-1 font-mono text-sm text-signal">JetBrains Mono for ticket numbers and Command Center data · #1042 · 6.5h</p>
         </Section>
 
@@ -75,7 +75,7 @@ export default function DesignSystemPage() {
             <Button size="sm">Small</Button>
             <Button disabled>Disabled</Button>
           </div>
-          <p className="mt-3 text-sm text-white/55">Rule: one gold button per screen. Everything else is glass or ghost.</p>
+          <p className="mt-3 text-sm text-ink-muted">Rule: one gold button per screen. Everything else is glass or ghost.</p>
         </Section>
 
         <Section title="Badges">
@@ -101,20 +101,20 @@ export default function DesignSystemPage() {
               <HoverLift>
                 <GlassPanel className="p-5">
                   <h3 className="font-display text-lg font-bold">GlassPanel</h3>
-                  <p className="mt-1 text-sm text-white/65">Floats over the 3D campus. Hover me: I lift.</p>
+                  <p className="mt-1 text-sm text-ink-muted">Floats over the 3D campus. Hover me: I lift.</p>
                 </GlassPanel>
               </HoverLift>
             </FadeIn>
             <FadeIn index={1}>
               <Card>
                 <h3 className="font-display text-lg font-bold">Card</h3>
-                <p className="mt-1 text-sm text-white/65">Quiet container for lists and content.</p>
+                <p className="mt-1 text-sm text-ink-muted">Quiet container for lists and content.</p>
               </Card>
             </FadeIn>
             <FadeIn index={2}>
               <GlassPanel strong className="p-5">
                 <h3 className="font-display text-lg font-bold">GlassPanel strong</h3>
-                <p className="mt-1 text-sm text-white/65">Near-opaque, for forms that must stay readable.</p>
+                <p className="mt-1 text-sm text-ink-muted">Near-opaque, for forms that must stay readable.</p>
               </GlassPanel>
             </FadeIn>
           </div>
@@ -176,7 +176,7 @@ export default function DesignSystemPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-4 border-b border-white/10 pb-2 font-mono text-xs tracking-[0.25em] text-white/50 uppercase">{title}</h2>
+      <h2 className="mb-4 border-b border-line pb-2 font-mono text-xs tracking-[0.25em] text-ink-muted uppercase">{title}</h2>
       {children}
     </section>
   );

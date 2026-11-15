@@ -1,6 +1,6 @@
 "use client";
 
-import { Html, Sparkles } from "@react-three/drei";
+import { ContactShadows, Html } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
@@ -8,7 +8,7 @@ import { AREA_META } from "@/lib/campus/areas";
 import { buildBuildingMesh, buildRoadGeometry, buildingAtFace, HEIGHT_EXAGGERATION, markColorsDirty, paintBuilding } from "@/lib/campus/geometry";
 import { SCALE } from "@/lib/campus/layout";
 import { campusBuildings, campusRoads, displayName, isGT, type CampusBuildingInfo } from "@/lib/campus/zones";
-import { FOG, Rig, type CampusMode } from "./CampusScene";
+import { Rig, type CampusMode } from "./CampusScene";
 
 /**
  * How buildings are coloured:
@@ -31,22 +31,30 @@ export type RealCampusSceneProps = {
   /** Open requests per OSM building id (heat view). */
   counts?: Record<string, number>;
   reducedMotion?: boolean;
+  /**
+   * "full": one soft directional shadow map (laptops).
+   * "lite": a single baked contact shadow under the buildings (phones; much cheaper).
+   */
+  shadows?: "full" | "lite";
 };
 
+// Light theme: pale sky, light ground, muted buildings.
+const SKY = "#eef3f8";
+
 // Surrounding city: dim, so GT buildings stand out.
-const CITY_WALL = new THREE.Color("#0f3353");
-const CITY_ROOF = new THREE.Color("#184668");
-const NON_GT_WALL = new THREE.Color(AREA_META.non_gt.color).multiplyScalar(0.55);
-const NON_GT_ROOF = new THREE.Color(AREA_META.non_gt.color).multiplyScalar(0.8);
+const CITY_WALL = new THREE.Color("#d3dae3");
+const CITY_ROOF = new THREE.Color("#e8ecf1");
+const NON_GT_WALL = new THREE.Color(AREA_META.non_gt.color).multiplyScalar(0.95);
+const NON_GT_ROOF = new THREE.Color(AREA_META.non_gt.color).lerp(new THREE.Color("#ffffff"), 0.35);
 // Brand view
-const GT_WALL = new THREE.Color("#2f74b0");
-const GT_ROOF = new THREE.Color("#d9cc97");
+const GT_WALL = new THREE.Color("#5f86ad");
+const GT_ROOF = new THREE.Color("#cfc18c");
 // Heat view
 const COOL = new THREE.Color("#1f5688");
 const HOT = new THREE.Color("#f2d16b");
 // Hovered / selected building
-const PICK_WALL = new THREE.Color("#e8cf7a");
-const PICK_ROOF = new THREE.Color("#fff3c4");
+const PICK_WALL = new THREE.Color("#d2ae3c");
+const PICK_ROOF = new THREE.Color("#f5dd85");
 
 const INDEX_BY_ID = new Map(campusBuildings.map((b, i) => [b.id, i]));
 
@@ -62,17 +70,17 @@ function BuildingLabel({ b, count }: { b: CampusBuildingInfo; count?: number }) 
   const a = anchor(b);
   return (
     <Html position={[a.x, a.top + 2.4, a.z]} center zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
-      <div className="glass-strong flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white shadow-panel">
-        {b.zone && <span className="size-2.5 rounded-full ring-1 ring-white/30" style={{ background: AREA_META[b.zone].color }} />}
+      <div className="glass-strong flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-ink shadow-panel">
+        {b.zone && <span className="size-2.5 rounded-full ring-1 ring-slate-300" style={{ background: AREA_META[b.zone].color }} />}
         {displayName(b)}
-        {b.zone && <span className="font-normal text-white/60">{AREA_META[b.zone].label}</span>}
+        {b.zone && <span className="font-normal text-ink-muted">{AREA_META[b.zone].label}</span>}
         {count !== undefined && <span className="rounded-full bg-gt-gold px-1.5 font-mono text-[0.65rem] text-navy-950">{count} open</span>}
       </div>
     </Html>
   );
 }
 
-const AREA_WALL = Object.fromEntries(Object.entries(AREA_META).map(([k, m]) => [k, new THREE.Color(m.color).multiplyScalar(0.8)]));
+const AREA_WALL = Object.fromEntries(Object.entries(AREA_META).map(([k, m]) => [k, new THREE.Color(m.color).multiplyScalar(0.68)] /* darker walls so every building separates from the pale ground */));
 const AREA_ROOF = Object.fromEntries(Object.entries(AREA_META).map(([k, m]) => [k, new THREE.Color(m.color).lerp(new THREE.Color("#ffffff"), 0.18)]));
 
 /**
@@ -165,20 +173,20 @@ function Campus({
   return (
     <group>
       {/* ground disc: fades into the fog at its edge */}
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.02}>
+      <mesh rotation-x={-Math.PI / 2} position-y={-0.02} receiveShadow>
         <circleGeometry args={[420, 48]} />
-        <meshStandardMaterial color="#05233d" roughness={1} />
+        <meshStandardMaterial color="#e3e9ef" roughness={1} />
       </mesh>
       <mesh geometry={roads}>
         <meshBasicMaterial vertexColors />
       </mesh>
-      <mesh geometry={mesh.geometry} {...handlers}>
+      <mesh geometry={mesh.geometry} castShadow receiveShadow {...handlers}>
         <meshStandardMaterial vertexColors roughness={0.85} />
       </mesh>
       {selectedAnchor && (
         <mesh rotation-x={-Math.PI / 2} position={[selectedAnchor.x, 0.12, selectedAnchor.z]}>
           <ringGeometry args={[selectedAnchor.reach + 0.6, selectedAnchor.reach + 1.1, 56]} />
-          <meshBasicMaterial color="#e8cf7a" transparent opacity={0.9} depthWrite={false} />
+          <meshBasicMaterial color="#003057" transparent opacity={0.85} depthWrite={false} />
         </mesh>
       )}
       {hovered != null && hovered !== selected && (
@@ -191,6 +199,7 @@ function Campus({
 
 export default function RealCampusScene({
   mode,
+  shadows = "lite",
   view = "brand",
   counts,
   selected = null,
@@ -207,19 +216,36 @@ export default function RealCampusScene({
   return (
     <Canvas
       dpr={[1, 1.5]}
+      shadows={shadows === "full" ? "soft" : false}
       camera={{ fov: 32, near: 1, far: 1200, position: [0, 90, 150] }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       frameloop={reducedMotion ? "demand" : "always"}
       aria-label="3D map of the Georgia Tech campus"
       role="img"
     >
-      <fog attach="fog" args={[FOG, 200, 560]} />
-      <hemisphereLight args={["#a9cdf0", "#001326", 1.15]} />
-      <directionalLight position={[-80, 120, 60]} intensity={1.5} color="#ffe9b0" />
-      <directionalLight position={[90, 40, -80]} intensity={0.35} color="#5ad1e6" />
+      <color attach="background" args={[SKY]} />
+      <fog attach="fog" args={[SKY, 230, 620]} />
+      <hemisphereLight args={["#ffffff", "#c9d3dd", 1.6]} />
+      <directionalLight
+        position={[-120, 170, 90]}
+        intensity={1.5}
+        color="#fff6e3"
+        castShadow={shadows === "full"}
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.4}
+        shadow-radius={6}
+        shadow-camera-left={-190}
+        shadow-camera-right={190}
+        shadow-camera-top={190}
+        shadow-camera-bottom={-190}
+        shadow-camera-near={10}
+        shadow-camera-far={500}
+      />
+      <directionalLight position={[110, 60, -90]} intensity={0.35} color="#dbe8f5" />
+      {shadows === "lite" && <ContactShadows position={[0, 0.02, 0]} scale={380} resolution={1024} blur={2.2} opacity={0.32} far={40} frames={1} color="#2a3f55" />}
 
       <Campus view={view} counts={counts} interactive={mode !== "hero"} selected={selectedIndex} onSelect={onSelect} />
-      {!reducedMotion && <Sparkles count={70} scale={[220, 26, 170]} position={[0, 22, 0]} size={5} speed={0.25} opacity={0.55} color="#d9cc97" />}
 
       <Rig mode={mode} target={target} panel={panel} reducedMotion={reducedMotion} />
     </Canvas>

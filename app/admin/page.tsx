@@ -49,7 +49,7 @@ export default async function AdminDashboard(props: PageProps<"/admin">) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-4xl font-bold tracking-tight md:text-5xl">Maintenance analytics</h1>
-          <p className="mt-2 text-white/65">Campus-wide request activity · last {days} days</p>
+          <p className="mt-2 text-ink-muted">Campus-wide request activity · last {days} days</p>
         </div>
         <nav className="flex rounded-xl bg-white p-1 ring-1 ring-slate-200" aria-label="Date range">
           {RANGES.map((r) => (

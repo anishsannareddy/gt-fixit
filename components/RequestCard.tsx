@@ -44,7 +44,7 @@ export function RequestCard({
             {showAssignee ? ` · ${ticket.assignee ? `→ ${ticket.assignee.name}` : "Unassigned"}` : ""}
           </p>
         </div>
-        <ChevronRightIcon className="size-5 shrink-0 self-center text-slate-400" />
+        <ChevronRightIcon className="size-5 shrink-0 self-center text-slate-500" />
       </Link>
       {actions && <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-2.5">{actions}</div>}
     </article>

@@ -70,7 +70,7 @@ export function Sheet({ open, onClose, title, eyebrow, children, footer, variant
           {modal && (
             <motion.div
               key="backdrop"
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-50 bg-navy-950/35 backdrop-blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -108,10 +108,10 @@ export function Sheet({ open, onClose, title, eyebrow, children, footer, variant
               className={cn("shrink-0 px-5 pt-3 pb-3 md:pt-5", fromBottom && "cursor-grab touch-none active:cursor-grabbing")}
               onPointerDown={fromBottom ? (e) => drag.start(e) : undefined}
             >
-              {fromBottom && <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-white/25" aria-hidden="true" />}
+              {fromBottom && <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-slate-300" aria-hidden="true" />}
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  {eyebrow && <div className="mb-0.5 text-xs font-semibold tracking-[0.18em] text-gt-gold uppercase">{eyebrow}</div>}
+                  {eyebrow && <div className="mb-0.5 text-xs font-semibold tracking-[0.18em] text-gold-ink uppercase">{eyebrow}</div>}
                   <h2 id={titleId} className="font-display text-2xl leading-tight font-bold tracking-tight">
                     {title}
                   </h2>
@@ -121,14 +121,14 @@ export function Sheet({ open, onClose, title, eyebrow, children, footer, variant
                   onClick={onClose}
                   onPointerDown={(e) => e.stopPropagation()}
                   aria-label="Close"
-                  className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white"
+                  className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100 text-ink transition hover:bg-slate-100 hover:text-ink"
                 >
                   <XIcon className="size-5" />
                 </button>
               </div>
             </div>
             <div className="scroll-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">{children}</div>
-            {footer && <div className="pb-safe shrink-0 border-t border-white/10 px-5 pt-3">{footer}</div>}
+            {footer && <div className="pb-safe shrink-0 border-t border-line px-5 pt-3">{footer}</div>}
           </motion.div>
         </>
       )}

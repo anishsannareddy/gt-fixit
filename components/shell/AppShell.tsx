@@ -23,7 +23,7 @@ function SwitchRole({ compact = false }: { compact?: boolean }) {
     <form action={signOut}>
       <button
         title="Sign out / switch demo role"
-        className="flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-3 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white"
+        className="flex min-h-10 items-center gap-2 rounded-xl border border-line px-3 text-sm font-semibold text-ink-muted transition hover:bg-slate-100 hover:text-ink"
       >
         <SwitchIcon className="size-4" />
         <span className={compact ? "sr-only" : "hidden sm:inline"}>Switch role</span>
@@ -44,12 +44,12 @@ function CampusShell({ user, children }: { user: User; children: ReactNode }) {
           <TopNav role={user.role} />
           <div className="ml-auto flex items-center gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-9 place-items-center rounded-full bg-gt-gold/20 text-xs font-bold text-gold-light ring-1 ring-gt-gold/40">
+              <span className="grid size-9 place-items-center rounded-full bg-gt-gold/20 text-xs font-bold text-gold-ink ring-1 ring-gt-gold/40">
                 {initials(user.name)}
               </span>
               <span className="hidden leading-tight sm:block">
                 <span className="block text-sm font-semibold">{user.name}</span>
-                <span className="block text-xs text-white/55">{ROLE_META[user.role].label}</span>
+                <span className="block text-xs text-ink-muted">{ROLE_META[user.role].label}</span>
               </span>
             </div>
             <SwitchRole />
@@ -67,20 +67,20 @@ function AdminShell({ user, children }: { user: User; children: ReactNode }) {
   return (
     <div className="bg-command flex min-h-dvh flex-col lg:pl-60">
       {/* Left rail (laptop) */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-white/8 bg-black/30 p-4 backdrop-blur-xl lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-line bg-white p-4 backdrop-blur-xl lg:flex">
         <Link href="/admin" aria-label="GT FixIt home" className="px-1">
           <Logo />
         </Link>
-        <p className="mt-6 mb-2 px-3 font-mono text-[0.65rem] tracking-[0.25em] text-signal/80 uppercase">Operations</p>
+        <p className="mt-6 mb-2 px-3 font-mono text-[0.65rem] tracking-[0.25em] text-signal uppercase">Operations</p>
         <RailNav role="admin" />
-        <div className="mt-auto rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+        <div className="mt-auto rounded-2xl border border-line bg-white p-3">
           <div className="flex items-center gap-2.5">
             <span className="grid size-9 place-items-center rounded-lg bg-signal/15 font-mono text-xs font-bold text-signal ring-1 ring-signal/30">
               {initials(user.name)}
             </span>
             <span className="min-w-0 leading-tight">
               <span className="block truncate text-sm font-semibold">{user.name}</span>
-              <span className="block truncate text-xs text-white/50">{user.title ?? "Admin"}</span>
+              <span className="block truncate text-xs text-ink-muted">{user.title ?? "Admin"}</span>
             </span>
           </div>
           <div className="mt-3">
@@ -90,7 +90,7 @@ function AdminShell({ user, children }: { user: User; children: ReactNode }) {
       </aside>
 
       {/* Top bar (phone / tablet) */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-white/8 bg-black/50 px-4 backdrop-blur-xl lg:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur-xl lg:hidden">
         <Link href="/admin" aria-label="GT FixIt home">
           <Logo />
         </Link>

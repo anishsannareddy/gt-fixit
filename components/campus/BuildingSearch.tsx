@@ -30,7 +30,7 @@ export function BuildingSearch({ buildings, onPick, className }: { buildings: Bu
 
   return (
     <div className={cn("relative", className)}>
-      <SearchIcon className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-white/50" />
+      <SearchIcon className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted" />
       <input
         type="text"
         role="combobox"
@@ -60,11 +60,11 @@ export function BuildingSearch({ buildings, onPick, className }: { buildings: Bu
             pick(results[active]);
           } else if (e.key === "Escape") setOpen(false);
         }}
-        className="glass-strong h-13 w-full rounded-2xl pr-4 pl-12 text-base text-white shadow-panel outline-none placeholder:text-white/45 focus:border-gt-gold focus:ring-2 focus:ring-gt-gold/30"
+        className="glass-strong h-13 w-full rounded-2xl pr-4 pl-12 text-base text-ink shadow-panel outline-none placeholder:text-slate-500 focus:border-gt-gold focus:ring-2 focus:ring-gt-gold/30"
       />
       {open && query.trim() && (
         <ul id={listId} role="listbox" className="glass-strong scroll-thin absolute z-20 mt-2 max-h-80 w-full overflow-auto rounded-2xl py-1.5 shadow-panel">
-          {results.length === 0 && <li className="px-4 py-3 text-sm text-white/55">No GT building matches “{query}”</li>}
+          {results.length === 0 && <li className="px-4 py-3 text-sm text-ink-muted">No GT building matches “{query}”</li>}
           {results.map((b, i) => (
             <li
               key={b.id}
@@ -75,11 +75,11 @@ export function BuildingSearch({ buildings, onPick, className }: { buildings: Bu
                 pick(b);
               }}
               onMouseEnter={() => setActive(i)}
-              className={cn("flex cursor-pointer items-center gap-3 px-4 py-2.5", i === active && "bg-white/10")}
+              className={cn("flex cursor-pointer items-center gap-3 px-4 py-2.5", i === active && "bg-slate-100")}
             >
-              <span className="size-2.5 shrink-0 rounded-full ring-1 ring-white/30" style={{ background: AREA_META[b.area].color }} aria-hidden="true" />
+              <span className="size-2.5 shrink-0 rounded-full ring-1 ring-slate-300" style={{ background: AREA_META[b.area].color }} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{b.name}</span>
-              <span className="shrink-0 text-xs text-white/50">
+              <span className="shrink-0 text-xs text-ink-muted">
                 {b.number ? `#${b.number} · ` : ""}
                 {AREA_META[b.area].label}
               </span>

@@ -91,14 +91,14 @@ export function ReportForm({ building, onBusy }: { building: Building; onBusy: (
       </div>
 
       <fieldset>
-        <legend className="mb-1.5 text-sm font-semibold text-white/90">What kind of issue?</legend>
+        <legend className="mb-1.5 text-sm font-semibold text-ink">What kind of issue?</legend>
         <div className="grid grid-cols-3 gap-2">
           {CATEGORIES.map((c) => {
             const Icon = CATEGORY_ICON[c];
             return (
               <label key={c} className="cursor-pointer">
                 <input type="radio" name="category" value={c} className="peer sr-only" />
-                <span className="flex h-full min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/12 bg-white/[0.05] px-1 py-2.5 text-center text-xs font-semibold text-white/75 transition peer-checked:border-gt-gold peer-checked:bg-gt-gold/20 peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold-light hover:border-white/30">
+                <span className="flex h-full min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-line bg-white px-1 py-2.5 text-center text-xs font-semibold text-ink-muted transition peer-checked:border-gt-navy peer-checked:ring-2 peer-checked:ring-gt-gold peer-checked:bg-gold-50 peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gt-navy hover:border-slate-300">
                   <Icon className="size-6" />
                   {CATEGORY_SHORT[c] ?? c}
                 </span>
@@ -116,7 +116,7 @@ export function ReportForm({ building, onBusy }: { building: Building; onBusy: (
           defaultValue="medium"
           options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_META[p].label, danger: p === "urgent" }))}
         />
-        <p className="mt-1.5 text-xs text-white/50">Urgent is for safety risks or flooding.</p>
+        <p className="mt-1.5 text-xs text-ink-muted">Urgent is for safety risks or flooding.</p>
         <FieldError>{errors.priority}</FieldError>
       </div>
 
@@ -135,7 +135,7 @@ export function ReportForm({ building, onBusy }: { building: Building; onBusy: (
       </div>
 
       <div>
-        <p className="mb-1.5 text-sm font-semibold text-white/90">Photo</p>
+        <p className="mb-1.5 text-sm font-semibold text-ink">Photo</p>
         <PhotoUploader onChange={setPhoto} />
         <FieldError>{uploadError}</FieldError>
       </div>

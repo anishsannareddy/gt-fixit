@@ -82,10 +82,10 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
           <h1 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
             {user.role === "technician" ? "My queue" : "All requests"}
           </h1>
-          <p className="mt-2 text-white/65">
+          <p className="mt-2 text-ink-muted">
             {byTab.unassigned.length} waiting for a technician
             {urgentUnassigned > 0 && (
-              <span className="font-semibold text-red-300"> · {urgentUnassigned} urgent</span>
+              <span className="font-semibold text-red-700"> · {urgentUnassigned} urgent</span>
             )}
             {user.role === "technician" && <> · {byTab.mine.length} assigned to you</>}
           </p>

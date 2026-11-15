@@ -1,6 +1,6 @@
 "use client";
 
-import { CameraControls, CameraControlsImpl, Html, Sparkles } from "@react-three/drei";
+import { CameraControls, CameraControlsImpl, Html } from "@react-three/drei";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -39,7 +39,7 @@ const ROOF: Record<CampusBuilding["type"], string> = {
 };
 const GOLD = new THREE.Color("#e8cf7a");
 const COOL = new THREE.Color("#17456e");
-export const FOG = "#00182b";
+export const FOG = "#eef3f8";
 
 /**
  * BLOCK CAMPUS (fallback). 45 hand-placed boxes from lib/campus/layout.ts.
@@ -95,24 +95,24 @@ function Ground({ buildings }: { buildings: CampusBuilding[] }) {
       {/* ground disc: fades into the fog at its edge */}
       <mesh rotation-x={-Math.PI / 2} position-y={-0.02}>
         <circleGeometry args={[260, 40]} />
-        <meshStandardMaterial color="#05233d" roughness={1} />
+        <meshStandardMaterial color="#e3e9ef" roughness={1} />
       </mesh>
       {/* roads */}
       {LANDMARKS.roads.map(([x1, z1, x2, z2], i) => (
         <mesh key={i} position={[(x1 + x2) / 2, 0.02, (z1 + z2) / 2]}>
           <boxGeometry args={[Math.abs(x2 - x1) || 1.6, 0.04, Math.abs(z2 - z1) || 1.6]} />
-          <meshStandardMaterial color="#0d3a61" roughness={1} />
+          <meshStandardMaterial color="#cdd6e0" roughness={1} />
         </mesh>
       ))}
       {/* Tech Green */}
       <mesh position={[g.x, 0.06, g.z]}>
         <boxGeometry args={[g.w, 0.12, g.d]} />
-        <meshStandardMaterial color="#1c6466" roughness={1} flatShading />
+        <meshStandardMaterial color="#b9d3b0" roughness={1} flatShading />
       </mesh>
       {/* low-poly trees (one draw call) */}
       <instancedMesh ref={trees} args={[undefined, undefined, treeSpots.length]}>
         <coneGeometry args={[0.55, 1.5, 5]} />
-        <meshStandardMaterial color="#1f6f7a" roughness={1} flatShading />
+        <meshStandardMaterial color="#8db58a" roughness={1} flatShading />
       </instancedMesh>
     </group>
   );
@@ -188,7 +188,7 @@ function Block({
       {/* soft contact shadow instead of real shadow maps (cheap on phones) */}
       <mesh rotation-x={-Math.PI / 2} position-y={0.03}>
         <planeGeometry args={[b.w + 1.6, b.d + 1.6]} />
-        <meshBasicMaterial color="#000814" transparent opacity={0.35} depthWrite={false} />
+        <meshBasicMaterial color="#2a3f55" transparent opacity={0.18} depthWrite={false} />
       </mesh>
       {selected && (
         <mesh rotation-x={-Math.PI / 2} position-y={0.08}>
@@ -198,7 +198,7 @@ function Block({
       )}
       {showLabel && (
         <Html position={[0, b.h * targetScale + 2.2, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
-          <div className="glass-strong flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white shadow-panel">
+          <div className="glass-strong flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-ink shadow-panel">
             {b.name}
             {heat != null && <span className="rounded-full bg-gt-gold px-1.5 font-mono text-[0.65rem] text-navy-950">{count} open</span>}
           </div>
@@ -311,10 +311,11 @@ export default function CampusScene({
       aria-label="3D map of the Georgia Tech campus"
       role="img"
     >
+      <color attach="background" args={[FOG]} />
       <fog attach="fog" args={[FOG, 190, 520]} />
-      <hemisphereLight args={["#a9cdf0", "#001326", 1.15]} />
-      <directionalLight position={[-80, 120, 60]} intensity={1.5} color="#ffe9b0" />
-      <directionalLight position={[90, 40, -80]} intensity={0.35} color="#5ad1e6" />
+      <hemisphereLight args={["#ffffff", "#c9d3dd", 1.6]} />
+      <directionalLight position={[-80, 120, 60]} intensity={1.4} color="#fff6e3" />
+      <directionalLight position={[90, 40, -80]} intensity={0.35} color="#dbe8f5" />
 
       <Ground buildings={buildings} />
       {buildings.map((b) => {
@@ -331,7 +332,6 @@ export default function CampusScene({
           />
         );
       })}
-      {!reducedMotion && <Sparkles count={70} scale={[200, 26, 150]} position={[0, 20, 0]} size={5} speed={0.25} opacity={0.55} color="#d9cc97" />}
 
       <Rig mode={mode} target={target} panel={panel} reducedMotion={reducedMotion} />
     </Canvas>

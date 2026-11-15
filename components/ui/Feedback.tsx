@@ -4,17 +4,17 @@ import { BlockTower } from "./Illustration";
 
 export function EmptyState({ title, children, art, action }: { title: string; children?: ReactNode; art?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center rounded-3xl border border-dashed border-white/15 px-6 py-12 text-center">
+    <div className="flex flex-col items-center rounded-3xl border border-dashed border-slate-300 bg-white/60 px-6 py-12 text-center">
       {art ?? <BlockTower />}
       <h3 className="mt-3 font-display text-xl font-bold">{title}</h3>
-      {children && <div className="mt-1 max-w-sm text-sm text-white/60">{children}</div>}
+      {children && <div className="mt-1 max-w-sm text-sm text-ink-muted">{children}</div>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-2xl bg-white/8", className)} aria-hidden="true" />;
+  return <div className={cn("animate-pulse rounded-2xl bg-slate-200/70", className)} aria-hidden="true" />;
 }
 
 /** Headline number with a label and optional change vs. the previous period. */
@@ -42,17 +42,17 @@ export function KpiTile({
     <div
       className={cn(
         "rounded-2xl border p-4",
-        tone === "alert" ? "border-red-400/40 bg-red-500/12" : tone === "gold" ? "border-gt-gold/40 bg-gt-gold/10" : "border-white/10 bg-white/[0.04]",
+        tone === "alert" ? "border-red-200 bg-red-50" : tone === "gold" ? "border-gt-gold/50 bg-gold-50" : "border-line bg-white",
         className,
       )}
     >
-      <div className={cn("text-[0.7rem] font-semibold tracking-[0.14em] uppercase", tone === "alert" ? "text-red-200" : "text-white/55")}>{label}</div>
-      <div className={cn("mt-1 font-mono text-3xl font-bold tabular-nums", tone === "alert" ? "text-red-100" : tone === "gold" ? "text-gold-light" : "text-white")}>
+      <div className={cn("text-[0.7rem] font-semibold tracking-[0.14em] uppercase", tone === "alert" ? "text-red-800" : "text-ink-muted")}>{label}</div>
+      <div className={cn("mt-1 font-mono text-3xl font-bold tabular-nums", tone === "alert" ? "text-red-800" : tone === "gold" ? "text-gold-ink" : "text-ink")}>
         {value}
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-white/55">
+      <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
         {hasChange && (
-          <span className={cn("font-semibold", changeGood === undefined || Math.abs(change) < 1 ? "text-white/60" : changeGood ? "text-emerald-300" : "text-red-300")}>
+          <span className={cn("font-semibold", changeGood === undefined || Math.abs(change) < 1 ? "text-ink-muted" : changeGood ? "text-emerald-700" : "text-red-700")}>
             {change > 0 ? "▲" : change < 0 ? "▼" : ""} {Math.abs(Math.round(change))}%
           </span>
         )}

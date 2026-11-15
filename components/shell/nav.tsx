@@ -37,7 +37,7 @@ export function TopNav({ role }: { role: Role }) {
           aria-current={isActive(href) ? "page" : undefined}
           className={cn(
             "flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition",
-            isActive(href) ? "bg-white/12 text-white" : "text-white/60 hover:bg-white/8 hover:text-white",
+            isActive(href) ? "bg-slate-100 text-ink" : "text-ink-muted hover:bg-slate-100 hover:text-ink",
           )}
         >
           <Icon className="size-4" />
@@ -65,7 +65,7 @@ export function MobileTabBar({ role }: { role: Role }) {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex min-h-12 items-center gap-2 rounded-full px-5 text-sm font-semibold transition",
-                  active ? "bg-gt-gold text-navy-950 shadow-glow" : "text-white/70",
+                  active ? "bg-gt-gold text-navy-950 shadow-glow" : "text-ink-muted",
                 )}
               >
                 <Icon className="size-5" />
@@ -91,7 +91,7 @@ export function RailNav({ role }: { role: Role }) {
           aria-current={isActive(href) ? "page" : undefined}
           className={cn(
             "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition",
-            isActive(href) ? "border-signal/30 bg-signal/10 text-white" : "border-transparent text-white/55 hover:bg-white/5 hover:text-white",
+            isActive(href) ? "border-signal/30 bg-signal/10 text-ink" : "border-transparent text-ink-muted hover:bg-slate-100 hover:text-ink",
           )}
         >
           <Icon className={cn("size-4.5", isActive(href) && "text-signal")} />

@@ -37,7 +37,7 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
           panel={selected ? (desktop ? "right" : "bottom") : "none"}
           fallback={
             <div className="grid h-full place-items-center p-6 text-center">
-              <p className="max-w-xs text-sm text-white/60">The 3D map isn&apos;t available on this device. Use the search box above to pick a building.</p>
+              <p className="max-w-xs text-sm text-ink-muted">The 3D map isn&apos;t available on this device. Use the search box above to pick a building.</p>
             </div>
           }
         />
@@ -46,7 +46,7 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
       <div className="pointer-events-none relative z-10 mx-auto max-w-xl px-4 pt-4">
         <BuildingSearch buildings={buildings} onPick={choose} className="pointer-events-auto" />
         {!selected && (
-          <p className="mt-3 text-center text-sm font-medium text-white/70 [text-shadow:0_1px_8px_rgb(0_17_31)]">
+          <p className="mt-3 text-center text-sm font-medium text-ink-muted [text-shadow:0_1px_8px_rgb(0_17_31)]">
             Tap a highlighted building to report a problem there
           </p>
         )}
@@ -65,7 +65,7 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
       >
         {selected && (
           <>
-            <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-white/60">
+            <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
               <AreaBadge area={selected.area} />
               {selected.number && <span>Building #{selected.number}</span>}
               <span>Goes to the {AREA_META[selected.area].label} maintenance team</span>

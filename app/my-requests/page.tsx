@@ -42,7 +42,7 @@ export default async function MyRequestsPage(props: PageProps<"/my-requests">) {
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-4xl font-bold tracking-tight md:text-5xl">My requests</h1>
-          <p className="mt-2 text-white/65">Track everything you&apos;ve reported.</p>
+          <p className="mt-2 text-ink-muted">Track everything you&apos;ve reported.</p>
         </div>
         <Link href="/report" className="btn-gold hidden sm:inline-flex">
           <PlusIcon className="size-4" /> New request

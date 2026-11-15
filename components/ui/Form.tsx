@@ -3,15 +3,15 @@ import { cn } from "./cn";
 
 // 16px text stops iOS Safari zooming in when an input is focused.
 export const FIELD =
-  "w-full rounded-2xl border border-white/15 bg-white/[0.07] px-4 py-3 text-base text-white outline-none transition " +
-  "placeholder:text-white/40 focus:border-gt-gold focus:bg-white/10 focus:ring-2 focus:ring-gt-gold/30 " +
-  "aria-[invalid=true]:border-red-400/70";
+  "w-full rounded-2xl border border-field bg-white px-4 py-3 text-base text-ink outline-none transition " +
+  "placeholder:text-slate-500 focus:border-gt-navy focus:ring-3 focus:ring-gt-gold/45 " +
+  "aria-[invalid=true]:border-red-600";
 
 export function Label({ className, optional, children, ...rest }: ComponentProps<"label"> & { optional?: boolean }) {
   return (
-    <label className={cn("mb-1.5 block text-sm font-semibold text-white/90", className)} {...rest}>
+    <label className={cn("mb-1.5 block text-sm font-semibold text-ink", className)} {...rest}>
       {children}
-      {optional && <span className="font-normal text-white/45"> (optional)</span>}
+      {optional && <span className="font-normal text-ink-muted"> (optional)</span>}
     </label>
   );
 }
@@ -31,7 +31,7 @@ export function Select({ className, ...rest }: ComponentProps<"select">) {
 export function FieldError({ children }: { children?: ReactNode }) {
   if (!children) return null;
   return (
-    <p role="alert" className="mt-1.5 text-sm text-red-300">
+    <p role="alert" className="mt-1.5 text-sm text-red-700">
       {children}
     </p>
   );
@@ -60,8 +60,8 @@ export function SegmentedControl<T extends string>({
 }) {
   return (
     <fieldset className={className}>
-      <legend className="mb-1.5 text-sm font-semibold text-white/90">{label}</legend>
-      <div className="grid auto-cols-fr grid-flow-col gap-1 rounded-2xl border border-white/10 bg-black/25 p-1">
+      <legend className="mb-1.5 text-sm font-semibold text-ink">{label}</legend>
+      <div className="grid auto-cols-fr grid-flow-col gap-1 rounded-2xl border border-line bg-slate-100 p-1">
         {options.map((o) => (
           <label key={o.value} className="cursor-pointer">
             <input
@@ -75,9 +75,9 @@ export function SegmentedControl<T extends string>({
             />
             <span
               className={cn(
-                "flex min-h-11 flex-col items-center justify-center rounded-xl px-2 text-center text-sm font-semibold text-white/65 transition",
+                "flex min-h-11 flex-col items-center justify-center rounded-xl px-2 text-center text-sm font-semibold text-ink-muted transition",
                 "peer-checked:bg-gt-gold peer-checked:text-navy-950 peer-checked:shadow-glow",
-                "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold-light",
+                "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gt-navy",
                 o.danger && "peer-checked:bg-red-400 peer-checked:shadow-none",
               )}
             >

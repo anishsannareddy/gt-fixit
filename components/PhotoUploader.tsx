@@ -30,7 +30,7 @@ export function PhotoUploader({ onChange }: { onChange: (f: File | null) => void
       {preview ? (
         <div className="relative inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt="Selected photo preview" className="h-40 w-auto max-w-full rounded-2xl object-cover ring-1 ring-white/15" />
+          <img src={preview} alt="Selected photo preview" className="h-40 w-auto max-w-full rounded-2xl object-cover ring-1 ring-slate-300" />
           <button
             type="button"
             onClick={() => {
@@ -47,14 +47,14 @@ export function PhotoUploader({ onChange }: { onChange: (f: File | null) => void
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-white/25 bg-white/[0.04] px-4 py-4 text-left transition hover:border-gt-gold hover:bg-white/[0.08]"
+          className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-4 text-left transition hover:border-gt-gold hover:bg-white"
         >
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gt-gold/15 text-gold-light">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gt-gold/15 text-gold-ink">
             <CameraIcon className="size-6" />
           </span>
           <span>
             <span className="block text-sm font-semibold">Take or upload a photo</span>
-            <span className="block text-xs text-white/50">Optional, but it helps the technician come prepared</span>
+            <span className="block text-xs text-ink-muted">Optional, but it helps the technician come prepared</span>
           </span>
         </button>
       )}

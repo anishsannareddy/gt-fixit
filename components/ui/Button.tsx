@@ -7,15 +7,16 @@ type Size = "sm" | "md" | "lg" | "xl";
 
 const BASE =
   "inline-flex items-center justify-center gap-2 font-semibold transition duration-200 select-none " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-light " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gt-navy " +
   "active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<Variant, string> = {
   // The one primary action on a screen
-  gold: "bg-gt-gold text-navy-950 shadow-glow hover:-translate-y-0.5 hover:bg-gold-light",
-  glass: "border border-white/15 bg-white/10 text-white backdrop-blur hover:-translate-y-0.5 hover:bg-white/16",
-  ghost: "text-white/75 hover:bg-white/10 hover:text-white",
-  danger: "border border-red-400/30 bg-red-500/15 text-red-100 hover:bg-red-500/25",
+  // Gold fill with navy text (8:1). Gold is never used as text colour on white.
+  gold: "bg-gt-gold text-navy-950 shadow-glow hover:-translate-y-0.5 hover:bg-[#c2b37c]",
+  glass: "border border-slate-300 bg-white text-ink shadow-sm hover:-translate-y-0.5 hover:border-gt-navy/40 hover:bg-navy-50",
+  ghost: "text-ink-muted hover:bg-navy-50 hover:text-ink",
+  danger: "border border-red-200 bg-red-50 text-red-800 hover:bg-red-100",
 };
 
 const SIZES: Record<Size, string> = {

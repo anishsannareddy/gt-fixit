@@ -23,12 +23,12 @@ export function CampusPreview({ counts, gtCount }: { counts: Partial<Record<Zone
 
       <div className="pointer-events-none relative z-10 flex flex-col gap-3 p-4 md:p-6">
         <div className="pointer-events-auto max-w-sm">
-          <p className="text-xs font-semibold tracking-[0.2em] text-gt-gold uppercase">Campus map</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-gold-ink uppercase">Campus map</p>
           <h1 className="font-display text-3xl font-bold tracking-tight md:text-4xl">{gtCount} GT buildings</h1>
-          <p className="mt-1 text-sm text-white/65">Drag to rotate, pinch or scroll to zoom. Surrounding city buildings are dimmed.</p>
+          <p className="mt-1 text-sm text-ink-muted">Drag to rotate, pinch or scroll to zoom. Surrounding city buildings are dimmed.</p>
         </div>
 
-        <div className="pointer-events-auto flex w-fit gap-1 rounded-2xl border border-white/10 bg-navy-950/70 p-1 backdrop-blur" role="group" aria-label="Colour buildings by">
+        <div className="pointer-events-auto flex w-fit gap-1 rounded-2xl border border-line bg-white/85 p-1 backdrop-blur" role="group" aria-label="Colour buildings by">
           {VIEWS.map((v) => (
             <button
               key={v.value}
@@ -37,7 +37,7 @@ export function CampusPreview({ counts, gtCount }: { counts: Partial<Record<Zone
               onClick={() => setView(v.value)}
               className={cn(
                 "min-h-10 rounded-xl px-4 text-sm font-semibold transition",
-                view === v.value ? "bg-gt-gold text-navy-950" : "text-white/70 hover:text-white",
+                view === v.value ? "bg-gt-gold text-navy-950" : "text-ink-muted hover:text-ink",
               )}
             >
               {v.label}

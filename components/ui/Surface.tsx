@@ -8,7 +8,7 @@ export function GlassPanel({ className, strong, ...rest }: ComponentProps<"div">
 
 /** Rounded content card. */
 export function Card({ className, ...rest }: ComponentProps<"div">) {
-  return <div className={cn("rounded-3xl border border-white/10 bg-white/[0.05] p-5", className)} {...rest} />;
+  return <div className={cn("rounded-3xl border border-line bg-white p-5", className)} {...rest} />;
 }
 
 /** Standard page width + padding (and room for the mobile tab bar). */
@@ -25,9 +25,9 @@ export function PageHeader({ eyebrow, title, subtitle, children }: { eyebrow?: s
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        {eyebrow && <p className="mb-1 text-xs font-semibold tracking-[0.2em] text-gt-gold uppercase">{eyebrow}</p>}
+        {eyebrow && <p className="mb-1 text-xs font-semibold tracking-[0.2em] text-gold-ink uppercase">{eyebrow}</p>}
         <h1 className="font-display text-4xl leading-none font-bold tracking-tight md:text-5xl">{title}</h1>
-        {subtitle && <p className="mt-2 text-white/65">{subtitle}</p>}
+        {subtitle && <p className="mt-2 text-ink-muted">{subtitle}</p>}
       </div>
       {children}
     </div>

@@ -37,7 +37,7 @@ export default async function RequestDetailPage(props: PageProps<"/requests/[id]
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-4 px-4 pt-6 pb-32 md:px-6 md:pt-10 md:pb-16">
-      <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-medium text-gold-light hover:underline">
+      <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-medium text-gold-ink hover:underline">
         <ArrowLeftIcon className="size-4" /> Back
       </Link>
 

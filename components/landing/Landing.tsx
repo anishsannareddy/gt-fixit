@@ -32,31 +32,32 @@ export function Landing({ personas, notice }: { personas: User[]; notice?: React
       <div className="absolute inset-0">
         <CampusCanvas mode="hero" credit={false} />
       </div>
-      {/* Darken where the text sits so the headline stays readable over the scene */}
+      {/* Fade the scene to white where the text sits so the headline never blends into the buildings */}
       <div
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgb(0_17_31/0.75)_0%,rgb(0_17_31/0.1)_30%,rgb(0_17_31/0.55)_62%,rgb(0_17_31/0.96)_100%)] md:bg-[linear-gradient(90deg,rgb(0_17_31/0.94)_0%,rgb(0_17_31/0.72)_38%,rgb(0_17_31/0)_72%)]"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgb(245_247_250/0.85)_0%,rgb(245_247_250/0)_28%,rgb(245_247_250/0.35)_55%,rgb(245_247_250/0.97)_78%)] md:bg-[linear-gradient(90deg,rgb(245_247_250/0.97)_0%,rgb(245_247_250/0.8)_38%,rgb(245_247_250/0)_70%)]"
         aria-hidden="true"
       />
 
       <header className="relative z-10 flex items-center justify-between px-5 pt-5 md:px-10 md:pt-8">
         <Logo />
-        <span className="hidden rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/70 backdrop-blur sm:block">
+        <span className="hidden rounded-full border border-line bg-slate-100 px-3 py-1 text-xs font-medium text-ink-muted backdrop-blur sm:block">
           Georgia Tech Campus Solutions Challenge
         </span>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col justify-end px-5 pb-8 md:justify-center md:px-10 md:pb-16">
-        <div className="max-w-2xl">
+      <main className="relative z-10 flex flex-1 flex-col justify-end px-4 pb-6 md:justify-center md:px-10 md:pb-16">
+        {/* Soft white panel behind the copy */}
+        <div className="max-w-2xl rounded-[2rem] bg-white/80 p-5 shadow-panel ring-1 ring-line backdrop-blur-md md:bg-white/70 md:p-8">
           <FadeIn>
-            <p className="text-xs font-semibold tracking-[0.25em] text-gt-gold uppercase md:text-sm">Campus maintenance, reimagined</p>
+            <p className="text-xs font-semibold tracking-[0.25em] text-gold-ink uppercase md:text-sm">Campus maintenance, reimagined</p>
           </FadeIn>
           <FadeIn delay={0.08}>
-            <h1 className="mt-3 font-display text-[3.4rem] leading-[0.95] font-bold tracking-tight text-balance sm:text-7xl md:text-8xl">
-              Fix it fast. <span className="text-gt-gold">Anywhere on campus.</span>
+            <h1 className="mt-3 font-display text-[3.1rem] leading-[0.95] font-bold tracking-tight text-balance text-ink sm:text-7xl md:text-8xl">
+              Fix it fast. <span className="text-gold-ink">Anywhere on campus.</span>
             </h1>
           </FadeIn>
           <FadeIn delay={0.16}>
-            <p className="mt-5 max-w-lg text-base text-white/75 md:text-lg">
+            <p className="mt-5 max-w-lg text-base text-ink-muted md:text-lg">
               Tap a building, snap a photo, and watch your request move from reported to resolved.
             </p>
           </FadeIn>
@@ -81,7 +82,7 @@ export function Landing({ personas, notice }: { personas: User[]; notice?: React
 
           {personas.length > 0 && (
             <FadeIn delay={0.32} className="mt-7">
-              <p className="mb-2.5 text-xs font-medium tracking-wide text-white/50 uppercase">Or explore the demo as</p>
+              <p className="mb-2.5 text-xs font-medium tracking-wide text-ink-muted uppercase">Or explore the demo as</p>
               <div className="flex flex-wrap gap-2">
                 {CHIPS.map(({ role, label, Icon, prefer }) => {
                   const options = personas.filter((p) => p.role === role);
@@ -92,14 +93,14 @@ export function Landing({ personas, notice }: { personas: User[]; notice?: React
                       <input type="hidden" name="userId" value={persona.id} />
                       <button
                         title={`Continue as ${persona.name}`}
-                        className="glass flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-5 pl-1.5 text-sm font-semibold transition hover:-translate-y-0.5 hover:border-gt-gold/60 hover:bg-white/12 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-light"
+                        className="glass flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-5 pl-1.5 text-sm font-semibold transition hover:-translate-y-0.5 hover:border-gt-gold hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gt-navy"
                       >
-                        <span className="grid size-9 place-items-center rounded-full bg-gt-gold/20 text-gold-light">
+                        <span className="grid size-9 place-items-center rounded-full bg-gt-gold/20 text-gold-ink">
                           <Icon className="size-4.5" />
                         </span>
                         <span className="text-left leading-tight">
                           {label}
-                          <span className="block text-[0.7rem] font-normal text-white/50">{persona.name}</span>
+                          <span className="block text-[0.7rem] font-normal text-ink-muted">{persona.name}</span>
                         </span>
                       </button>
                     </form>
@@ -155,7 +156,7 @@ function EmailForm({ onBack }: { onBack: () => void }) {
           {pending ? "Signing in…" : "Continue"}
         </Button>
       </div>
-      <p id="email-help" className="mt-3 text-xs text-white/50">
+      <p id="email-help" className="mt-3 text-xs text-ink-muted">
         Demo sign-in: any @gatech.edu address works and no password is needed. Real GT single sign-on would replace this.
       </p>
     </form>

@@ -33,7 +33,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               exit={{ opacity: 0, y: -8 }}
               className="glass-strong pointer-events-auto flex max-w-sm items-center gap-2.5 rounded-2xl px-4 py-3 text-sm font-medium shadow-panel"
             >
-              <span className={`grid size-6 place-items-center rounded-full ${t.tone === "success" ? "bg-emerald-400/20 text-emerald-300" : "bg-red-400/20 text-red-300"}`}>
+              <span className={`grid size-6 place-items-center rounded-full ${t.tone === "success" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
                 {t.tone === "success" ? <CheckIcon className="size-4" /> : <AlertIcon className="size-4" />}
               </span>
               {t.message}

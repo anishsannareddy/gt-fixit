@@ -43,7 +43,7 @@ export function Interactive() {
         }
       >
         <div className="space-y-4">
-          <p className="text-sm text-white/65">
+          <p className="text-sm text-ink-muted">
             On a phone the sheet slides up from the bottom and can be dragged down by its handle. On a laptop it is a side panel. The drawer is
             full-screen on phones and dims the page behind it. Esc closes both.
           </p>

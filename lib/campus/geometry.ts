@@ -142,7 +142,7 @@ const ROAD_SHADE: Record<string, number> = { motorway: 1.5, motorway_link: 1.35,
 export function buildRoadGeometry(roads: RawRoad[]): THREE.BufferGeometry {
   const pos: number[] = [];
   const col: number[] = [];
-  const base = new THREE.Color("#0c3558");
+  const base = new THREE.Color("#cdd6e0");
   for (const road of roads) {
     const half = (road.w * SCALE) / 2;
     const shade = ROAD_SHADE[road.k] ?? 1;
@@ -158,7 +158,9 @@ export function buildRoadGeometry(roads: RawRoad[]): THREE.BufferGeometry {
       const px = (-dz / len) * half, pz = (dx / len) * half;
       const x1 = ax - ex, z1 = az - ez, x2 = bx + ex, z2 = bz + ez;
       pos.push(x1 + px, y, z1 + pz, x2 + px, y, z2 + pz, x2 - px, y, z2 - pz, x1 + px, y, z1 + pz, x2 - px, y, z2 - pz, x1 - px, y, z1 - pz);
-      for (let k = 0; k < 6; k++) col.push(base.r * shade, base.g * shade, base.b * shade);
+      // bigger roads a little darker so the street grid reads on the light ground
+      const f = 1 - (shade - 1) * 0.3;
+      for (let k = 0; k < 6; k++) col.push(base.r * f, base.g * f, base.b * f);
     }
   }
   const geometry = new THREE.BufferGeometry();

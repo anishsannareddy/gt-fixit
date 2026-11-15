@@ -4,9 +4,9 @@ import { cn } from "./cn";
 
 const CHIP =
   "inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold whitespace-nowrap transition " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-light";
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gt-navy";
 const ON = "border-gt-gold bg-gt-gold text-navy-950";
-const OFF = "border-white/15 bg-white/[0.06] text-white/75 hover:border-white/30 hover:text-white";
+const OFF = "border-field/60 bg-white text-ink-muted hover:border-gt-navy hover:text-ink";
 
 /** Pill that is a link (filters/tabs driven by the URL) or a button (client state). */
 export function Chip({
@@ -28,7 +28,7 @@ export function Chip({
   const inner = (
     <>
       {children}
-      {count !== undefined && <span className={cn("tabular-nums", active ? "opacity-70" : "text-white/45")}>{count}</span>}
+      {count !== undefined && <span className={cn("tabular-nums", active ? "opacity-70" : "text-ink-muted")}>{count}</span>}
     </>
   );
   if (href)

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Component, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { usePrefersReducedMotion } from "@/components/ui/useMediaQuery";
+import { useIsDesktop, usePrefersReducedMotion } from "@/components/ui/useMediaQuery";
 import { cn } from "@/components/ui/cn";
 import { buildCampus } from "@/lib/campus/layout";
 import type { RealCampusSceneProps } from "./RealCampusScene";
@@ -14,7 +14,7 @@ const BlockCampusScene = dynamic(() => import("./CampusScene"), { ssr: false, lo
 function SceneLoading() {
   return (
     <div className="grid h-full w-full place-items-center" aria-hidden="true">
-      <div className="size-10 animate-spin rounded-full border-2 border-white/15 border-t-gt-gold" />
+      <div className="size-10 animate-spin rounded-full border-2 border-line border-t-gt-gold" />
     </div>
   );
 }
@@ -54,7 +54,7 @@ export function OsmCredit({ className }: { className?: string }) {
       href="https://www.openstreetmap.org/copyright"
       target="_blank"
       rel="noreferrer"
-      className={cn("rounded-md bg-navy-950/60 px-1.5 py-0.5 text-[0.65rem] text-white/60 backdrop-blur hover:text-white", className)}
+      className={cn("rounded-md bg-white/85 px-1.5 py-0.5 text-[0.65rem] text-ink-muted backdrop-blur hover:text-ink", className)}
     >
       © OpenStreetMap contributors
     </a>
@@ -72,8 +72,10 @@ export function CampusCanvas({
   fallback = null,
   credit = true,
   ...scene
-}: Omit<RealCampusSceneProps, "reducedMotion"> & { fallback?: ReactNode; /** Show the © OpenStreetMap credit in the corner. */ credit?: boolean }) {
+}: Omit<RealCampusSceneProps, "reducedMotion" | "shadows"> & { fallback?: ReactNode; /** Show the © OpenStreetMap credit in the corner. */ credit?: boolean }) {
   const reducedMotion = usePrefersReducedMotion();
+  // Real shadow maps on laptops; a single baked contact shadow on phones.
+  const desktop = useIsDesktop();
   // Server render assumes WebGL works; the browser corrects it right after loading if not.
   const supported = useSyncExternalStore(noopSubscribe, hasWebGL, () => true);
   const blocks = useMemo(() => buildCampus(), []);
@@ -89,7 +91,7 @@ export function CampusCanvas({
           </SceneBoundary>
         }
       >
-        <RealCampusScene {...scene} reducedMotion={reducedMotion} />
+        <RealCampusScene {...scene} reducedMotion={reducedMotion} shadows={desktop ? "full" : "lite"} />
       </SceneBoundary>
       {credit && <OsmCredit className="absolute right-2 bottom-2 z-10" />}
     </div>
