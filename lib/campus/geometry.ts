@@ -121,7 +121,15 @@ export function paintBuilding(mesh: BuildingMesh, i: number, wallColor: THREE.Co
   }
 }
 export function markColorsDirty(mesh: BuildingMesh): void {
-  mesh.geometry.getAttribute("color").needsUpdate = true;
+  const colors = mesh.geometry.getAttribute("color") as THREE.BufferAttribute;
+  colors.clearUpdateRanges(); // whole buffer
+  colors.needsUpdate = true;
+}
+/** Upload only building i's colours (hover / selection changes), instead of the whole buffer. */
+export function markBuildingDirty(mesh: BuildingMesh, i: number): void {
+  const colors = mesh.geometry.getAttribute("color") as THREE.BufferAttribute;
+  colors.addUpdateRange(mesh.starts[i] * 3, (mesh.starts[i + 1] - mesh.starts[i]) * 3);
+  colors.needsUpdate = true;
 }
 
 /** Which building owns this triangle? (Used for click/hover picking on the merged mesh.) */

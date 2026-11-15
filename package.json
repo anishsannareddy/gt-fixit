@@ -14,7 +14,8 @@
     "check:coverage": "tsx scripts/check-coverage.ts",
     "ai:backfill": "tsx scripts/ai-backfill.ts",
     "test:unit": "tsx --test lib/*.test.ts lib/ai/*.test.ts",
-    "buildings:sync": "tsx scripts/sync-buildings.ts"
+    "buildings:sync": "tsx scripts/sync-buildings.ts",
+    "perf:map": "playwright test -c playwright.perf.config.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -30,6 +31,7 @@
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
     "three": "^0.187.0",
+    "three-mesh-bvh": "^0.8.3",
     "zod": "^4.6.7"
   },
   "devDependencies": {

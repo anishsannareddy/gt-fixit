@@ -212,6 +212,9 @@ function Block({
 /** A rectangle on the ground, in scene units. */
 export type Frame = { minX: number; maxX: number; minZ: number; maxZ: number };
 
+/** Seconds of no input before the student map starts its slow orbit again. */
+export const IDLE_MS = 4000;
+
 /**
  * Camera rig shared by the real campus and this block fallback.
  *  - hero (landing page): slow auto-orbit, no interaction
@@ -227,6 +230,7 @@ export function Rig({
   frame = { minX: -60, maxX: 60, minZ: -60, maxZ: 60 },
   bounds,
   resetKey = 0,
+  autoRotate = false,
 }: {
   mode: CampusMode;
   /** Scene-unit position to fly to, or null for the overview. */
@@ -239,8 +243,12 @@ export function Rig({
   bounds?: Frame;
   /** Change this number to fly back to the overview ("Reset view"). */
   resetKey?: number;
+  /** Orbit slowly after IDLE_MS without any input (paused while a building is selected). */
+  autoRotate?: boolean;
 }) {
   const controls = useRef<CameraControlsImpl>(null);
+  const domElement = useThree((s) => s.gl.domElement);
+  const lastInput = useRef(0);
   const aspect = useThree((s) => s.size.width / s.size.height);
   const fov = useThree((s) => (s.camera as THREE.PerspectiveCamera).fov ?? 32);
   const hadTargetRef = useRef(false);
@@ -299,10 +307,29 @@ export function Rig({
     c.setLookAt(focus.x + dir.x * reach, reach * 0.8, focus.z + dir.z * reach, focus.x, 0, focus.z, smooth);
   }, [target, panel, smooth]);
 
-  // Only the landing page orbits on its own.
+  // Any input on the map (drag, pinch, wheel, hover, keys) pauses the idle orbit.
+  useEffect(() => {
+    lastInput.current = performance.now();
+    if (!autoRotate) return;
+    const bump = () => {
+      lastInput.current = performance.now();
+    };
+    const events = ["pointerdown", "pointermove", "wheel", "touchstart", "keydown"] as const;
+    events.forEach((e) => domElement.addEventListener(e, bump, { passive: true }));
+    return () => events.forEach((e) => domElement.removeEventListener(e, bump));
+  }, [autoRotate, domElement]);
+
+  // The landing page always orbits; the student map orbits after a few idle seconds,
+  // easing in so it never jerks, and never while a building is selected.
   useFrame((_, dt) => {
     const c = controls.current;
-    if (c && mode === "hero" && !reducedMotion) c.rotate(dt * 0.05, 0, false);
+    if (!c || reducedMotion) return;
+    if (mode === "hero") return void c.rotate(dt * 0.05, 0, false);
+    if (!autoRotate || target) return;
+    const idle = performance.now() - lastInput.current;
+    if (idle < IDLE_MS) return;
+    const ease = Math.min(1, (idle - IDLE_MS) / 1500);
+    c.rotate(dt * 0.04 * ease, 0, false);
   });
 
   return (
@@ -310,6 +337,12 @@ export function Rig({
       ref={controls}
       makeDefault
       enabled={mode !== "hero"}
+      onControlStart={() => {
+        lastInput.current = performance.now();
+      }}
+      onControl={() => {
+        lastInput.current = performance.now();
+      }}
       minPolarAngle={0.15}
       maxPolarAngle={1.32}
       minDistance={18}

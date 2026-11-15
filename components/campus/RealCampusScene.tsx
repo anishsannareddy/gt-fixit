@@ -1,11 +1,12 @@
 "use client";
 
-import { ContactShadows, Html } from "@react-three/drei";
+import { ContactShadows, Html, PerformanceMonitor } from "@react-three/drei";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { acceleratedRaycast, computeBoundsTree } from "three-mesh-bvh";
 import { AREA_META } from "@/lib/campus/areas";
-import { buildBuildingMesh, buildRoadGeometry, buildingAtFace, HEIGHT_EXAGGERATION, markColorsDirty, paintBuilding } from "@/lib/campus/geometry";
+import { buildBuildingMesh, buildRoadGeometry, buildingAtFace, HEIGHT_EXAGGERATION, markBuildingDirty, markColorsDirty, paintBuilding } from "@/lib/campus/geometry";
 import { SCALE } from "@/lib/campus/layout";
 import { HEAT_META, heatBand } from "@/lib/campus/heat";
 import { campusBuildings, campusRoads, displayName, isGT, type CampusBuildingInfo } from "@/lib/campus/zones";
@@ -34,11 +35,10 @@ export type RealCampusSceneProps = {
   /** Open requests per OSM building id (heat view). */
   counts?: Record<string, number>;
   reducedMotion?: boolean;
-  /**
-   * "full": one soft directional shadow map (laptops).
-   * "lite": a single baked contact shadow under the buildings (phones; much cheaper).
-   */
-  shadows?: "full" | "lite";
+  /** "phone": lower pixel-ratio ceiling and no antialiasing. Shadows are always one baked contact shadow. */
+  quality?: "desktop" | "phone";
+  /** Slowly orbit after a few seconds without interaction (student map). */
+  autoRotate?: boolean;
 };
 
 // Light theme: pale sky, light ground, muted buildings.
@@ -60,7 +60,13 @@ const HEAT_ROOF = Object.fromEntries(Object.entries(HEAT_META).map(([k, m]) => [
 const PICK_WALL = new THREE.Color("#d2ae3c");
 const PICK_ROOF = new THREE.Color("#f5dd85");
 
-const INDEX_BY_ID = new Map(campusBuildings.map((b, i) => [b.id, i]));
+/**
+ * Two merged meshes: the surrounding city (never raycast) and the clickable GT buildings
+ * (raycast through a BVH). Indexes below are into GT_BUILDINGS.
+ */
+const GT_BUILDINGS = campusBuildings.filter(isGT);
+const CITY_BUILDINGS = campusBuildings.filter((b) => !isGT(b));
+const INDEX_BY_ID = new Map(GT_BUILDINGS.map((b, i) => [b.id, i]));
 
 /** Bounding rectangle of some buildings' outlines, in scene units. */
 function extent(list: typeof campusBuildings, margin = 0): Frame {
@@ -123,41 +129,72 @@ function Campus({
   onSelect?: (b: CampusBuildingInfo) => void;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
-  const mesh = useMemo(() => buildBuildingMesh(campusBuildings), []);
+  const gtMesh = useMemo(() => {
+    const m = buildBuildingMesh(GT_BUILDINGS);
+    // Bounding-volume tree, built once: hover/click raycasts test a few dozen triangles instead of all of them.
+    m.geometry.computeBoundsTree = computeBoundsTree;
+    m.geometry.computeBoundsTree();
+    return m;
+  }, []);
+  const cityMesh = useMemo(() => buildBuildingMesh(CITY_BUILDINGS), []);
   const roads = useMemo(() => buildRoadGeometry(campusRoads), []);
   // With reduced motion the scene only redraws on request, so ask for a frame after recolouring.
   const invalidate = useThree((three) => three.invalidate);
 
-  useEffect(() => {
-    campusBuildings.forEach((b, i) => {
-      if (!isGT(b)) {
-        if (b.zone === "non_gt" && view !== "brand") paintBuilding(mesh, i, NON_GT_WALL, NON_GT_ROOF);
-        else paintBuilding(mesh, i, CITY_WALL, CITY_ROOF);
-      } else if (view === "zone") {
-        paintBuilding(mesh, i, AREA_WALL[b.zone], AREA_ROOF[b.zone]);
-      } else if (view === "heat") {
+  // Base colour of a GT building in the current view.
+  const base = useMemo(() => {
+    return (i: number): [THREE.Color, THREE.Color] => {
+      const b = GT_BUILDINGS[i];
+      if (view === "zone") return [AREA_WALL[b.zone], AREA_ROOF[b.zone]];
+      if (view === "heat") {
         const band = heatBand(counts?.[b.id] ?? 0);
-        paintBuilding(mesh, i, HEAT_WALL[band], HEAT_ROOF[band]);
-      } else {
-        paintBuilding(mesh, i, GT_WALL, GT_ROOF);
+        return [HEAT_WALL[band], HEAT_ROOF[band]];
       }
-    });
-    if (hovered != null) paintBuilding(mesh, hovered, PICK_WALL, PICK_ROOF);
-    if (selected != null) paintBuilding(mesh, selected, PICK_WALL, PICK_ROOF);
-    markColorsDirty(mesh);
-    invalidate();
-  }, [mesh, view, counts, hovered, selected, invalidate]);
+      return [GT_WALL, GT_ROOF];
+    };
+  }, [view, counts]);
 
-  // Picking: the hit triangle tells us which building it belongs to. Only GT buildings respond.
-  const gtAt = (e: ThreeEvent<MouseEvent | PointerEvent>) => {
-    if (e.faceIndex == null) return null;
-    const i = buildingAtFace(mesh, e.faceIndex);
-    return isGT(campusBuildings[i]) ? i : null;
-  };
+  // The city only changes with the view.
+  useEffect(() => {
+    CITY_BUILDINGS.forEach((b, i) => {
+      if (b.zone === "non_gt" && view !== "brand") paintBuilding(cityMesh, i, NON_GT_WALL, NON_GT_ROOF);
+      else paintBuilding(cityMesh, i, CITY_WALL, CITY_ROOF);
+    });
+    markColorsDirty(cityMesh);
+    invalidate();
+  }, [cityMesh, view, invalidate]);
+
+  // Full GT repaint only when the view or the counts change…
+  const lit = useRef<number[]>([]);
+  useEffect(() => {
+    GT_BUILDINGS.forEach((_, i) => paintBuilding(gtMesh, i, ...base(i)));
+    lit.current = [];
+    markColorsDirty(gtMesh);
+    invalidate();
+  }, [gtMesh, base, invalidate]);
+
+  // …while hover and selection repaint just the buildings that changed (no per-move full upload).
+  useEffect(() => {
+    const next = [hovered, selected].filter((i): i is number => i != null);
+    for (const i of lit.current) {
+      if (next.includes(i)) continue;
+      paintBuilding(gtMesh, i, ...base(i));
+      markBuildingDirty(gtMesh, i);
+    }
+    for (const i of next) {
+      paintBuilding(gtMesh, i, PICK_WALL, PICK_ROOF);
+      markBuildingDirty(gtMesh, i);
+    }
+    lit.current = next;
+    invalidate();
+  }, [gtMesh, base, hovered, selected, invalidate]);
+
+  const gtAt = (e: ThreeEvent<MouseEvent | PointerEvent>) => (e.faceIndex == null ? null : buildingAtFace(gtMesh, e.faceIndex));
   const handlers = interactive
     ? {
         onPointerMove: (e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation();
+          if (e.buttons) return; // dragging the camera: no hover changes
           const i = gtAt(e);
           setHovered(i);
           document.body.style.cursor = i != null ? "pointer" : "";
@@ -170,45 +207,50 @@ function Campus({
         onClick: (e: ThreeEvent<MouseEvent>) => {
           e.stopPropagation();
           const i = gtAt(e);
-          if (i != null && e.delta <= 6) onSelect?.(campusBuildings[i]);
+          if (i != null && e.delta <= 6) onSelect?.(GT_BUILDINGS[i]);
         },
       }
     : {};
-  const selectedAnchor = selected != null ? anchor(campusBuildings[selected]) : null;
+  const selectedAnchor = selected != null ? anchor(GT_BUILDINGS[selected]) : null;
 
   // Free GPU memory when the scene goes away
   useEffect(
     () => () => {
-      mesh.geometry.dispose();
+      gtMesh.geometry.dispose();
+      cityMesh.geometry.dispose();
       roads.dispose();
     },
-    [mesh, roads],
+    [gtMesh, cityMesh, roads],
   );
 
   return (
     <group>
       {/* ground disc: fades into the fog at its edge */}
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.02} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} position-y={-0.02} raycast={() => null}>
         <circleGeometry args={[700, 64]} />
-        <meshStandardMaterial color="#e3e9ef" roughness={1} />
+        <meshLambertMaterial color="#e3e9ef" />
       </mesh>
-      <mesh geometry={roads}>
+      <mesh geometry={roads} raycast={() => null}>
         <meshBasicMaterial vertexColors />
       </mesh>
-      <mesh geometry={mesh.geometry} castShadow receiveShadow {...handlers}>
-        <meshStandardMaterial vertexColors roughness={0.85} />
+      {/* the city is never picked, so it skips raycasting entirely */}
+      <mesh geometry={cityMesh.geometry} raycast={() => null}>
+        <meshLambertMaterial vertexColors />
+      </mesh>
+      <mesh geometry={gtMesh.geometry} raycast={bvhRaycast} {...handlers}>
+        <meshLambertMaterial vertexColors />
       </mesh>
       {selectedAnchor && (
-        <mesh rotation-x={-Math.PI / 2} position={[selectedAnchor.x, 0.12, selectedAnchor.z]}>
+        <mesh rotation-x={-Math.PI / 2} position={[selectedAnchor.x, 0.12, selectedAnchor.z]} raycast={() => null}>
           <ringGeometry args={[selectedAnchor.reach + 0.6, selectedAnchor.reach + 1.1, 56]} />
           <meshBasicMaterial color="#003057" transparent opacity={0.85} depthWrite={false} />
         </mesh>
       )}
       {view === "heat" && <HotSpotPins counts={counts} />}
       {hovered != null && hovered !== selected && (
-        <BuildingLabel b={campusBuildings[hovered]} count={view === "heat" ? (counts?.[campusBuildings[hovered].id] ?? 0) : undefined} />
+        <BuildingLabel b={GT_BUILDINGS[hovered]} count={view === "heat" ? (counts?.[GT_BUILDINGS[hovered].id] ?? 0) : undefined} />
       )}
-      {selected != null && <BuildingLabel b={campusBuildings[selected]} count={view === "heat" ? (counts?.[campusBuildings[selected].id] ?? 0) : undefined} />}
+      {selected != null && <BuildingLabel b={GT_BUILDINGS[selected]} count={view === "heat" ? (counts?.[GT_BUILDINGS[selected].id] ?? 0) : undefined} />}
     </group>
   );
 }
@@ -261,9 +303,37 @@ function HotSpotPins({ counts }: { counts?: Record<string, number> }) {
   );
 }
 
+const MAX_DPR = 1.5;
+const LOW_DPR = 1;
+
+/** Raycast through the BVH, stopping at the first hit (all we need for picking). */
+function bvhRaycast(this: THREE.Mesh, raycaster: THREE.Raycaster, hits: THREE.Intersection[]) {
+  (raycaster as THREE.Raycaster & { firstHitOnly?: boolean }).firstHitOnly = true;
+  acceleratedRaycast.call(this, raycaster, hits);
+}
+
+/**
+ * Two quality steps: drop the pixel ratio to LOW_DPR when the frame rate falls, go back up when it
+ * recovers, and stay low if it keeps flip-flopping. Each change resizes the canvas (costly), so it
+ * happens rarely. Lives in its own component and calls the renderer directly: no scene re-renders.
+ */
+function AdaptiveQuality() {
+  const setDpr = useThree((s) => s.setDpr);
+  // Start watching only after the scene has loaded, so the first slow frames don't count.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+  if (!ready) return null;
+  // Explicit bounds: the defaults treat anything under 60 fps as "declining" on 120 Hz screens.
+  return <PerformanceMonitor bounds={() => [40, 55]} onDecline={() => setDpr(LOW_DPR)} onIncline={() => setDpr(MAX_DPR)} flipflops={8} onFallback={() => setDpr(LOW_DPR)} />;
+}
+
 export default function RealCampusScene({
   mode,
-  shadows = "lite",
+  quality = "desktop",
+  autoRotate = false,
   view = "brand",
   counts,
   selected = null,
@@ -275,44 +345,41 @@ export default function RealCampusScene({
   const selectedIndex = selected != null ? (INDEX_BY_ID.get(selected) ?? null) : null;
   const target = useMemo(() => {
     if (selectedIndex == null) return null;
-    const a = anchor(campusBuildings[selectedIndex]);
+    const a = anchor(GT_BUILDINGS[selectedIndex]);
     return { x: a.x, z: a.z };
   }, [selectedIndex]);
+
   return (
     <Canvas
-      dpr={[1, 1.5]}
-      shadows={shadows === "full" ? "soft" : false}
+      // Capped at 1.5 (phones render far fewer pixels than their 3x screens); AdaptiveQuality may drop it to 1.
+      dpr={MAX_DPR}
       camera={{ fov: 32, near: 1, far: 2000, position: [0, 90, 150] }}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+      gl={{ antialias: quality === "desktop", alpha: true, powerPreference: "high-performance" }}
       frameloop={reducedMotion ? "demand" : "always"}
       aria-label="3D map of the Georgia Tech campus"
       role="img"
     >
+      <AdaptiveQuality />
       <color attach="background" args={[SKY]} />
       <fog attach="fog" args={[SKY, 320, 900]} />
       <hemisphereLight args={["#ffffff", "#c9d3dd", 1.6]} />
-      <directionalLight
-        position={[-120, 170, 90]}
-        intensity={1.5}
-        color="#fff6e3"
-        castShadow={shadows === "full"}
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.4}
-        shadow-radius={6}
-        shadow-camera-left={-190}
-        shadow-camera-right={190}
-        shadow-camera-top={190}
-        shadow-camera-bottom={-190}
-        shadow-camera-near={10}
-        shadow-camera-far={500}
-      />
+      {/* No shadow maps: the lights only shade faces, and one contact shadow is baked once (frames=1). */}
+      <directionalLight position={[-120, 170, 90]} intensity={1.5} color="#fff6e3" />
       <directionalLight position={[110, 60, -90]} intensity={0.35} color="#dbe8f5" />
-      {shadows === "lite" && <ContactShadows position={[0, 0.02, 0]} scale={380} resolution={1024} blur={2.2} opacity={0.32} far={40} frames={1} color="#2a3f55" />}
+      <ContactShadows position={[0, 0.02, 0]} scale={380} resolution={1024} blur={2.2} opacity={0.32} far={40} frames={1} color="#2a3f55" />
 
       <Campus view={view} counts={counts} interactive={mode !== "hero"} selected={selectedIndex} onSelect={onSelect} />
 
-      <Rig mode={mode} target={target} panel={panel} reducedMotion={reducedMotion} frame={GT_FRAME} bounds={ALL_BOUNDS} resetKey={resetKey} />
+      <Rig
+        mode={mode}
+        target={target}
+        panel={panel}
+        reducedMotion={reducedMotion}
+        frame={GT_FRAME}
+        bounds={ALL_BOUNDS}
+        resetKey={resetKey}
+        autoRotate={autoRotate}
+      />
     </Canvas>
   );
 }

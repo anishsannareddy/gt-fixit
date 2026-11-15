@@ -13,8 +13,16 @@ test("admin heat map shows the green / yellow / red legend and a Reset view butt
   await expect(map.getByText("Maintenance areas").first()).toBeVisible();
 });
 
-test("student map has search and a Reset view button", async ({ browser }) => {
+test("student map has search, no Reset view button, and slowly orbits when left alone", async ({ browser }) => {
   const page = await signIn(browser, ACCOUNTS.student);
   await expect(page.getByRole("combobox", { name: "Search buildings" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Reset view" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reset view" })).toHaveCount(0);
+  const canvas = page.locator("canvas").first();
+  await canvas.waitFor();
+  await page.mouse.move(2, 2); // keep the pointer off the map
+  await page.waitForTimeout(7000); // past the idle delay, plus the ease-in
+  const a = await canvas.screenshot();
+  await page.waitForTimeout(1500);
+  const b = await canvas.screenshot();
+  expect(a.equals(b)).toBe(false);
 });
