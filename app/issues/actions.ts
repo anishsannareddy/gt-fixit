@@ -13,7 +13,8 @@ export async function toggleVote(groupId: number, want: boolean): Promise<VoteRe
   const user = await requireUser(["reporter"]);
   if (!Number.isInteger(groupId) || groupId <= 0) return { ok: false, error: "Issue not found." };
 
-  const { data: open } = await db().from("requests").select("reporter_id").eq("group_id", groupId).in("status", OPEN_STATUSES);
+  const { data: open } = await db().from("requests").select("reporter_id").eq("group_id", groupId).in("status", OPEN_STATUSES).eq("visibility", "public");
+  // Private requests aren't votable: they never show up for other students.
   if (!open?.length) return { ok: false, error: "This issue has already been fixed." };
 
   if (want) {

@@ -8,7 +8,9 @@ import { IssueCard } from "@/components/issues/IssueCard";
 import { CATEGORIES, PHOTO_BUCKET, PRIORITIES, PRIORITY_META, type Category } from "@/lib/constants";
 import { browserSupabase } from "@/lib/supabase/browser";
 import { PhotoUploader } from "@/components/PhotoUploader";
-import { FieldError, Input, Label, SegmentedControl, Textarea } from "@/components/ui/Form";
+import { FieldError, Input, Label, SegmentedControl, Select, Textarea } from "@/components/ui/Form";
+import { VISIBILITY_HELP } from "@/components/tickets/VisibilityControl";
+import { DESCRIPTION_MAX, ROOM_MAX, SPOTS, descriptionError, roomError, type Visibility } from "@/lib/validation";
 import {
   ApplianceIcon, BoltIcon, BugIcon, BulbIcon, ChairIcon, DotsIcon, DropletIcon, ElevatorIcon, LockIcon, SparkleIcon, ThermometerIcon,
 } from "@/components/ui/Icons";
@@ -61,11 +63,23 @@ export function ReportForm({
   const similar = useSimilarIssues(building.id, hasIssues);
   const [photo, setPhoto] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const errors = state?.fieldErrors ?? {};
+  const [where, setWhere] = useState<"room" | "spot">("room");
+  const [room, setRoom] = useState("");
+  const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState<Visibility>("public");
+  // Client-side errors appear once a field is left (or on submit); the server checks again.
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const local = {
+    room: where === "room" && touched.room ? roomError(room) : null,
+    description: touched.description ? descriptionError(description) : null,
+  };
+  const errors = { ...(state?.fieldErrors ?? {}), ...Object.fromEntries(Object.entries(local).filter(([, v]) => v)) } as Record<string, string>;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setUploadError(null);
+    setTouched({ room: true, description: true });
+    if ((where === "room" && roomError(room)) || descriptionError(description)) return;
     const formData = new FormData(e.currentTarget);
 
     if (photo) {
@@ -104,10 +118,50 @@ export function ReportForm({
       <input type="hidden" name="building_id" value={building.id} />
 
       <div>
-        <Label htmlFor="location_detail" optional>
-          Room, floor or area
-        </Label>
-        <Input id="location_detail" name="location_detail" placeholder="e.g. Room 214, 3rd floor bathroom" maxLength={120} />
+        <SegmentedControl
+          name="location_kind"
+          label="Where is it?"
+          value={where}
+          onChange={setWhere}
+          options={[
+            { value: "room", label: "In a room" },
+            { value: "spot", label: "Not in a room" },
+          ]}
+        />
+        {where === "room" ? (
+          <div className="mt-2">
+            <Label htmlFor="room">Room number</Label>
+            <Input
+              id="room"
+              name="room"
+              inputMode="text"
+              autoComplete="off"
+              autoCapitalize="characters"
+              placeholder="e.g. 405, 1116A or G12"
+              maxLength={ROOM_MAX}
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+              onBlur={() => setTouched((t) => ({ ...t, room: true }))}
+              aria-invalid={Boolean(errors.room)}
+              aria-describedby="room-error"
+            />
+            <div id="room-error">
+              <FieldError>{errors.room}</FieldError>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2">
+            <Label htmlFor="spot">Spot</Label>
+            <Select id="spot" name="spot" defaultValue={SPOTS[0]}>
+              {SPOTS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </Select>
+            <FieldError>{errors.spot}</FieldError>
+          </div>
+        )}
       </div>
 
       <fieldset>
@@ -147,10 +201,26 @@ export function ReportForm({
       </div>
 
       <div>
-        <Label htmlFor="description" optional>
-          Details
-        </Label>
-        <Textarea id="description" name="description" rows={3} placeholder="What's happening? When did it start?" maxLength={2000} onChange={(e) => similar.setDescription(e.target.value)} />
+        <div className="flex items-baseline justify-between gap-2">
+          <Label htmlFor="description">Details</Label>
+          <span className={description.length > DESCRIPTION_MAX ? "text-xs font-semibold text-red-700" : "text-xs text-ink-muted"} aria-live="polite" data-testid="description-count">
+            {description.length}/{DESCRIPTION_MAX}
+          </span>
+        </div>
+        <Textarea
+          id="description"
+          name="description"
+          rows={3}
+          placeholder="What's happening? When did it start?"
+          maxLength={DESCRIPTION_MAX}
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            similar.setDescription(e.target.value);
+          }}
+          onBlur={() => setTouched((t) => ({ ...t, description: true }))}
+          aria-invalid={Boolean(errors.description)}
+        />
         <FieldError>{errors.description}</FieldError>
       </div>
 
@@ -164,6 +234,20 @@ export function ReportForm({
           </div>
         </section>
       )}
+
+      <div>
+        <SegmentedControl
+          name="visibility"
+          label="Who can see it?"
+          value={visibility}
+          onChange={setVisibility}
+          options={[
+            { value: "public", label: "Public" },
+            { value: "private", label: "Private" },
+          ]}
+        />
+        <p className="mt-1.5 text-xs text-ink-muted">{VISIBILITY_HELP[visibility]}</p>
+      </div>
 
       <div>
         <p className="mb-1.5 text-sm font-semibold text-ink">Photo</p>

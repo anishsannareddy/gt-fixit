@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { TicketWithRelations } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
-import { AreaBadge, PriorityBadge, StatusBadge } from "@/components/ui/Badge";
+import { AreaBadge, PriorityBadge, PrivateBadge, StatusBadge } from "@/components/ui/Badge";
 import { cn } from "@/components/ui/cn";
 import { ChevronRightIcon, PinIcon } from "@/components/ui/Icons";
 import { StatusStepper } from "./StatusStepper";
@@ -41,6 +41,7 @@ export function TicketCard({
           <div className="flex flex-wrap items-center gap-1.5">
             <StatusBadge status={ticket.status} />
             <PriorityBadge priority={ticket.priority} />
+            {ticket.visibility === "private" && <PrivateBadge />}
             <span className="ml-auto font-mono text-xs text-ink-muted">#{ticket.id}</span>
           </div>
           <h3 className="mt-2 truncate font-display text-lg font-bold">{ticket.title}</h3>

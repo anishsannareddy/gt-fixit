@@ -33,6 +33,7 @@ export async function loadCandidates(sb: SupabaseClient, buildingId: number, opt
     .select("group_id, description, title, created_at, group:issue_groups(id, title, category)")
     .eq("building_id", buildingId)
     .in("status", OPEN)
+    .eq("visibility", "public") // private requests are never grouped
     .gte("created_at", since)
     .lt("created_at", before)
     .order("created_at", { ascending: false })
@@ -71,6 +72,7 @@ type Row = {
   priority: Priority;
   building_id: number;
   group_id: number;
+  visibility: "public" | "private";
   created_at: string;
   building: { name: string; type: string } | null;
 };
@@ -93,7 +95,7 @@ export async function runTriage(
 ): Promise<RunResult | null> {
   const { data } = await sb
     .from("requests")
-    .select("id, title, description, location_detail, category, priority, building_id, group_id, created_at, building:buildings(name, type)")
+    .select("id, title, description, location_detail, category, priority, building_id, group_id, visibility, created_at, building:buildings(name, type)")
     .eq("id", requestId)
     .maybeSingle();
   const req = data as unknown as Row | null;
@@ -106,7 +108,8 @@ export async function runTriage(
 
   if (opts.userId && !(await takeAiBudget(sb, opts.userId, "triage"))) return saveFallback("Rate limit reached");
 
-  const group = opts.group !== false;
+  // Private requests are never grouped with others.
+  const group = opts.group !== false && req.visibility !== "private";
   const candidates = group ? await loadCandidates(sb, req.building_id, { excludeGroupId: req.group_id, before: opts.chronological ? req.created_at : undefined }) : [];
   const { count: votes } = await sb.from("group_votes").select("user_id", { count: "exact", head: true }).eq("group_id", req.group_id);
 

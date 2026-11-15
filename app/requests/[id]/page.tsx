@@ -10,6 +10,7 @@ import { PageContainer } from "@/components/ui/Surface";
 import { TicketActions } from "@/components/tickets/TicketActions";
 import { AiTriagePanel } from "@/components/tickets/AiUrgency";
 import { TicketDetail } from "@/components/tickets/TicketDetail";
+import { VisibilityControl } from "@/components/tickets/VisibilityControl";
 
 export async function generateMetadata(props: PageProps<"/requests/[id]">): Promise<Metadata> {
   const { id } = await props.params;
@@ -50,6 +51,7 @@ export default async function RequestDetailPage(props: PageProps<"/requests/[id]
             {user.role !== "reporter" && ticket.status !== "resolved" && (
               <AiTriagePanel t={ticket} viewerId={user.id} canEdit={user.role === "admin" || !ticket.assignee_id || ticket.assignee_id === user.id} />
             )}
+            {user.role === "reporter" && <VisibilityControl key={ticket.visibility} id={ticket.id} value={ticket.visibility} />}
             <TicketActions
               ticket={ticket}
               viewer={{ id: user.id, role: user.role }}

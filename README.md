@@ -28,7 +28,7 @@ npm run dev                    # http://localhost:3000
 
 1. Create a free project at [supabase.com](https://supabase.com) (region: East US).
 2. **SQL Editor → New query** → paste all of [`supabase/schema.sql`](supabase/schema.sql) → **Run**.
-   *Already set up before the AI features?* Instead paste [`supabase/migrations/001_ai_features.sql`](supabase/migrations/001_ai_features.sql) → **Run** (adds tables and columns only; keeps your data; safe to run twice).
+   *Already set up before the AI features?* Instead paste [`supabase/migrations/001_ai_features.sql`](supabase/migrations/001_ai_features.sql) → **Run** (adds tables and columns only; keeps your data; safe to run twice), then [`002_visibility_review_delete.sql`](supabase/migrations/002_visibility_review_delete.sql) (private requests, Smart Sort review flag, request deletion). Run them in order.
 3. Copy **Project URL**, **anon/publishable key**, and **service_role/secret key** from *Project Settings → API* into `.env.local`.
 4. **Authentication → Sign In / Providers:** keep **Email** enabled and turn **off** "Allow new users to sign up".
    Our server creates accounts itself (only for @gatech.edu emails), so public sign-up through the Supabase API must be closed.

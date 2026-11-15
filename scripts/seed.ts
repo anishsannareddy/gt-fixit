@@ -182,30 +182,32 @@ const RESOLUTION_NOTES: Record<string, string[]> = {
   Other: ["Repaired window track.", "Replaced ceiling tile."],
 };
 
-const FLOORS = ["1st floor", "2nd floor", "3rd floor", "4th floor", "Basement"];
+/** Same format the report form produces: "Room 214" / "Room 1116A", or one of the form's spots. */
+const room = (floors: number, perFloor: number) => `Room ${Math.floor(between(1, floors + 1))}${String(Math.floor(between(1, perFloor))).padStart(2, "0")}`;
 function locationFor(type: BType): string {
   switch (type) {
     case "residence":
       return weighted([
-        [`Room ${Math.floor(between(1, 5))}${String(Math.floor(between(1, 40))).padStart(2, "0")}`, 6],
-        [`${pick(FLOORS)} hallway`, 2],
-        ["Laundry room", 1],
-        [`${pick(FLOORS)} bathroom`, 2],
+        [room(4, 40), 6],
+        ["Hallway", 2],
+        ["Restroom", 2],
         ["Lobby", 1],
+        ["Stairwell", 1],
       ]);
     case "academic":
       return weighted([
-        [`Room ${Math.floor(between(1, 4))}${String(Math.floor(between(1, 60))).padStart(2, "0")}`, 5],
-        [`${pick(FLOORS)} restroom`, 3],
-        [`${pick(FLOORS)} study area`, 2],
-        ["Main entrance", 1],
+        [room(3, 60), 5],
+        ["Restroom", 3],
+        ["Hallway", 2],
+        ["Lobby", 1],
+        ["Elevator", 1],
       ]);
     case "dining":
-      return pick(["Seating area", "Restroom", "Entrance", "Beverage station"]);
+      return pick(["Lobby", "Restroom", "Hallway", "Outdoors"]);
     case "athletic":
-      return pick(["Locker room", "Weight room", "Pool deck", "Main entrance"]);
+      return pick(["Room 101", "Room 120", "Lobby", "Outdoors"]);
     default:
-      return pick(["1st floor", "2nd floor", "Restroom", "Lobby"]);
+      return pick([room(2, 30), "Hallway", "Restroom", "Lobby"]);
   }
 }
 
@@ -239,11 +241,11 @@ const CLUSTERS: Cluster[] = [
     ai: ["high", "Active ceiling leak reported by several residents; risk of water damage and slippery floors.", true],
     extraVotes: 6,
     reports: [
-      { title: "Water leaking from ceiling", desc: "Water dripping from a ceiling tile outside room 312, bucket placed underneath.", loc: "3rd floor hallway", priority: "urgent", hoursAgo: 30, status: "in_progress" },
-      { title: "Ceiling dripping in hallway", desc: "Steady drip from the ceiling near the stairwell on the 3rd floor. Floor is wet.", loc: "3rd floor hallway", priority: "high", hoursAgo: 26, by: "alex" },
-      { title: "Leak above bathroom", desc: "Brown water stain spreading on the bathroom ceiling and it's dripping now.", loc: "3rd floor bathroom", priority: "medium", hoursAgo: 20 },
+      { title: "Water leaking from ceiling", desc: "Water dripping from a ceiling tile outside room 312, bucket placed underneath.", loc: "Hallway", priority: "urgent", hoursAgo: 30, status: "in_progress" },
+      { title: "Ceiling dripping in hallway", desc: "Steady drip from the ceiling near the stairwell on the 3rd floor. Floor is wet.", loc: "Hallway", priority: "high", hoursAgo: 26, by: "alex" },
+      { title: "Leak above bathroom", desc: "Brown water stain spreading on the bathroom ceiling and it's dripping now.", loc: "Restroom", priority: "medium", hoursAgo: 20 },
       { title: "Water coming through ceiling tile", desc: "Ceiling tile is soaked and sagging, water dripping onto the carpet.", loc: "Room 314", priority: "high", hoursAgo: 9 },
-      { title: "Wet ceiling 3rd floor", desc: "Same leak others reported, still dripping tonight.", loc: "3rd floor hallway", priority: "low", hoursAgo: 3 },
+      { title: "Wet ceiling 3rd floor", desc: "Same leak others reported, still dripping tonight.", loc: "Hallway", priority: "low", hoursAgo: 3 },
     ],
   },
   {
@@ -254,10 +256,10 @@ const CLUSTERS: Cluster[] = [
     ai: ["high", "Ongoing leak with several reports; water near the lounge floor is a slip risk.", true],
     extraVotes: 5,
     reports: [
-      { title: "Water leaking from ceiling", desc: "Water dripping from the ceiling in the 2nd floor lounge onto the couches.", loc: "2nd floor lounge", priority: "urgent", hoursAgo: 22 },
-      { title: "Lounge ceiling leaking", desc: "Puddle forming under a ceiling vent in the lounge.", loc: "2nd floor lounge", priority: "high", hoursAgo: 15 },
-      { title: "Drip from ceiling vent", desc: "Water dripping out of the ceiling vent next to the lounge windows.", loc: "2nd floor lounge", priority: "medium", hoursAgo: 7 },
-      { title: "Leak in lounge still going", desc: "The lounge ceiling is still leaking, there are towels everywhere.", loc: "2nd floor lounge", priority: "high", hoursAgo: 2 },
+      { title: "Water leaking from ceiling", desc: "Water dripping from the ceiling in the 2nd floor lounge onto the couches.", loc: "Room 205", priority: "urgent", hoursAgo: 22 },
+      { title: "Lounge ceiling leaking", desc: "Puddle forming under a ceiling vent in the lounge.", loc: "Room 205", priority: "high", hoursAgo: 15 },
+      { title: "Drip from ceiling vent", desc: "Water dripping out of the ceiling vent next to the lounge windows.", loc: "Room 205", priority: "medium", hoursAgo: 7 },
+      { title: "Leak in lounge still going", desc: "The lounge ceiling is still leaking, there are towels everywhere.", loc: "Room 205", priority: "high", hoursAgo: 2 },
     ],
   },
   {
@@ -268,8 +270,8 @@ const CLUSTERS: Cluster[] = [
     ai: ["high", "The east elevator is down, blocking step-free access to upper floors.", true],
     extraVotes: 3,
     reports: [
-      { title: "Elevator out of service", desc: "East elevator doors won't open on any floor.", loc: "East elevator", priority: "high", hoursAgo: 18, status: "assigned" },
-      { title: "East elevator broken", desc: "East elevator is stuck on the 4th floor and won't come when called.", loc: "East elevator", priority: "urgent", hoursAgo: 6 },
+      { title: "Elevator out of service", desc: "East elevator doors won't open on any floor.", loc: "Elevator", priority: "high", hoursAgo: 18, status: "assigned" },
+      { title: "East elevator broken", desc: "East elevator is stuck on the 4th floor and won't come when called.", loc: "Elevator", priority: "urgent", hoursAgo: 6 },
     ],
   },
   {
@@ -292,8 +294,8 @@ const CLUSTERS: Cluster[] = [
     ai: ["high", "The side entrance won't open for anyone, so people prop the door.", true],
     extraVotes: 2,
     reports: [
-      { title: "Card reader not working", desc: "BuzzCard reader at the side entrance flashes red for every card.", loc: "Side entrance", priority: "high", hoursAgo: 12 },
-      { title: "Side door won't open", desc: "Side door card reader is broken, everyone has to walk around.", loc: "Side entrance", priority: "medium", hoursAgo: 5 },
+      { title: "Card reader not working", desc: "BuzzCard reader at the side entrance flashes red for every card.", loc: "Lobby", priority: "high", hoursAgo: 12 },
+      { title: "Side door won't open", desc: "Side door card reader is broken, everyone has to walk around.", loc: "Lobby", priority: "medium", hoursAgo: 5 },
     ],
   },
   // Mislabeled urgencies: single reports where the AI disagrees with the reporter.
@@ -313,7 +315,7 @@ const CLUSTERS: Cluster[] = [
     groupTitle: "Faint gas smell near stove",
     ai: ["urgent", "A gas smell is a potential safety hazard and should be checked right away.", true],
     extraVotes: 1,
-    reports: [{ title: "Faint gas smell in kitchen", desc: "Faint gas-like smell near the stove in the 2nd floor kitchen since this afternoon. Probably nothing.", loc: "2nd floor kitchen", priority: "low", hoursAgo: 3 }],
+    reports: [{ title: "Faint gas smell in kitchen", desc: "Faint gas-like smell near the stove in the 2nd floor kitchen since this afternoon. Probably nothing.", loc: "Room 210", priority: "low", hoursAgo: 3 }],
   },
   {
     key: "warm-room",
@@ -331,7 +333,7 @@ const CLUSTERS: Cluster[] = [
     groupTitle: "Wobbly study table",
     ai: ["low", "A wobbly table is a minor annoyance with no risk."],
     extraVotes: 0,
-    reports: [{ title: "Wobbly desk", desc: "Study table on the 3rd floor wobbles when you write on it.", loc: "3rd floor study area", priority: "high", hoursAgo: 10 }],
+    reports: [{ title: "Wobbly desk", desc: "Study table on the 3rd floor wobbles when you write on it.", loc: "Room 312", priority: "high", hoursAgo: 10 }],
   },
 ];
 
@@ -568,9 +570,13 @@ async function main() {
     }
 
     const [aiU, aiWhy, aiSafety] = issue.ai;
+    // About 1 in 13 reports is private (deterministic, so the rest of the random data doesn't shift).
+    const isPrivate = rows.length % 13 === 5;
     rows.push({
       // Open, recent reports of the same issue in the same building share a group (what the AI would do).
-      _group: status !== "resolved" && daysAgo < 30 ? `${building.id}|${issue.title}` : `solo-${rows.length}`,
+      // Private reports are never grouped.
+      _group: !isPrivate && status !== "resolved" && daysAgo < 30 ? `${building.id}|${issue.title}` : `solo-${rows.length}`,
+      visibility: isPrivate ? "private" : "public",
       ...aiFields(aiSafety ? maxU(aiU, priority as U) : aiU, aiWhy, Boolean(aiSafety), category, created),
       title: issue.title,
       description: issue.desc,
@@ -633,6 +639,7 @@ async function main() {
         building_id: building.id,
         area: building.area,
         location_detail: r.loc,
+        visibility: "public",
         category: c.category,
         priority: r.priority,
         status: r.status ?? "submitted",
@@ -646,6 +653,24 @@ async function main() {
       });
     });
     curated++;
+  }
+
+  // One of Alex's own open reports (outside the curated groups) is private, to demo the Private badge.
+  const alexPrivate = rows.find((r) => r.reporter_id === alex.id && r.status !== "resolved" && !CLUSTERS.some((c) => c.key === r._group));
+  if (alexPrivate) {
+    alexPrivate.visibility = "private";
+    alexPrivate._group = `solo-alex-private`;
+  }
+  // The demo personas start under the "5 reports per hour" limit: nothing of theirs in the last 2 hours.
+  for (const r of rows) {
+    if (demoReporters.some((d) => d.id === r.reporter_id) && Date.parse(String(r.created_at)) > now - 2 * HOUR) {
+      const shift = now - 2 * HOUR - Date.parse(String(r.created_at)) - HOUR;
+      const move = (t: unknown) => (t ? new Date(Date.parse(String(t)) + shift).toISOString() : t);
+      r.created_at = move(r.created_at);
+      r.updated_at = move(r.updated_at);
+      r.resolved_at = move(r.resolved_at);
+      for (const e of r._events) e.created_at = move(e.created_at);
+    }
   }
 
   rows.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
@@ -676,6 +701,7 @@ async function main() {
   // Votes: every reporter counts as a vote on their group, plus extra "Me too" votes from other students.
   const votes = new Map<string, Record<string, unknown>>();
   rows.forEach((r) => {
+    if (r.visibility === "private") return; // private requests never count toward "students affected"
     const gid = groupId.get(r._group)!;
     votes.set(`${gid}|${r.reporter_id}`, { group_id: gid, user_id: r.reporter_id, created_at: r.created_at });
   });

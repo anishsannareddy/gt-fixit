@@ -190,3 +190,48 @@ export async function addNote(formData: FormData): Promise<ActionResult> {
   revalidateAll(ticket.id);
   return { ok: true, message: "Note added." };
 }
+
+/**
+ * Reporter: make their request public or private.
+ * Private → it leaves any shared issue group (a new group of its own), its "Me too" vote is removed,
+ * and the old group's title is refreshed if it was this request's. Public → the reporter counts again.
+ * Public requests are not re-grouped automatically; the AI only groups at submission.
+ */
+export async function setVisibility(id: number, visibility: "public" | "private"): Promise<ActionResult> {
+  const user = await requireUser(["reporter"]);
+  if (visibility !== "public" && visibility !== "private") return fail("Choose Public or Private.");
+  const { data: t } = await db()
+    .from("requests")
+    .select("id, title, category, building_id, group_id, reporter_id, status, visibility")
+    .eq("id", Number.isInteger(id) ? id : 0)
+    .maybeSingle<{ id: number; title: string; category: string; building_id: number; group_id: number; reporter_id: string; status: Status; visibility: string }>();
+  if (!t || t.reporter_id !== user.id) return fail("Request not found.");
+  if (t.visibility === visibility) return { ok: true, message: visibility === "private" ? "Already private." : "Already public." };
+
+  const sb = db();
+  if (visibility === "private") {
+    const { data: others } = await sb.from("requests").select("id, title, reporter_id, created_at").eq("group_id", t.group_id).neq("id", t.id).order("created_at");
+    let groupId = t.group_id;
+    if (others?.length) {
+      const { data: g, error } = await sb.from("issue_groups").insert({ building_id: t.building_id, category: t.category, title: t.title }).select("id").single();
+      if (error || !g) return fail(error?.message ?? "Could not update the request.");
+      groupId = g.id;
+      // The old group keeps its other reports; refresh its title if it came from this one.
+      const { data: old } = await sb.from("issue_groups").select("title").eq("id", t.group_id).single();
+      if (old?.title === t.title) await sb.from("issue_groups").update({ title: others[0].title }).eq("id", t.group_id);
+    }
+    const { error } = await sb.from("requests").update({ visibility, group_id: groupId, updated_at: new Date().toISOString() }).eq("id", t.id);
+    if (error) return fail(error.message);
+    // No "students affected" vote for private requests, unless they also reported another public one in the old group.
+    if (!others?.some((o) => o.reporter_id === user.id)) await sb.from("group_votes").delete().eq("group_id", t.group_id).eq("user_id", user.id);
+  } else {
+    const { error } = await sb.from("requests").update({ visibility, updated_at: new Date().toISOString() }).eq("id", t.id);
+    if (error) return fail(error.message);
+    await sb.from("group_votes").upsert({ group_id: t.group_id, user_id: user.id }, { onConflict: "group_id,user_id", ignoreDuplicates: true });
+  }
+  await sb.from("request_events").insert({ request_id: t.id, actor_id: user.id, from_status: t.status, to_status: t.status, note: visibility === "private" ? "Made private" : "Made public" });
+  revalidateAll(t.id);
+  revalidatePath("/issues");
+  revalidatePath("/report");
+  return { ok: true, message: visibility === "private" ? "Now private: only you and maintenance staff can see it." : "Now public: it shows in Active issues." };
+}
