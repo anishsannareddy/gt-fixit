@@ -4,7 +4,7 @@ import { formatDateTime } from "@/lib/format";
 import { cn } from "@/components/ui/cn";
 
 function describe(e: TicketEvent): string {
-  if (e.from_status === e.to_status) return e.note?.startsWith("Priority changed") ? "changed the priority" : "added a note";
+  if (e.from_status === e.to_status) return e.note?.startsWith("Priority changed") ? "changed the priority" : e.note?.startsWith("Urgency set") ? "set the urgency" : "added a note";
   if (e.from_status === null) return "submitted the request";
   if (e.from_status === "resolved") return "reopened the request";
   if (e.to_status === "assigned") return e.actor?.role === "technician" ? "claimed it" : "assigned it";

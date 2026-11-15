@@ -150,7 +150,7 @@ export default async function AnalyticsPage(props: PageProps<"/admin/analytics">
         </Panel>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Panel title="Top 10 buildings" subtitle="By requests submitted">
           {a.topBuildings.length ? <HBarChart data={a.topBuildings} seriesName="Requests" /> : <Empty />}
         </Panel>
