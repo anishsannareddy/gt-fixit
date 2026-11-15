@@ -30,3 +30,12 @@ Campus maintenance app for the Georgia Tech Campus Solutions Challenge. See READ
 - `npm run test:e2e` (Playwright, `e2e/`): signs in with the seeded demo accounts against `.env.local`'s Supabase. Tests must clean up what they create (see `e2e/helpers.ts`). Keep the three role flows passing after any UI change; update selectors in `e2e/` when you rename buttons or labels.
 - `npm run check:contrast` after colour changes; `npm run check:coverage` after changing building data or camera bounds.
 - Heat thresholds live only in `lib/campus/heat.ts`.
+
+## AI features (Active issues, Smart Sort)
+- `lib/ai/provider.ts` is the ONLY file that imports `openai`. Everything else calls `generateStructured`. Never expose `OPENAI_API_KEY` (no `NEXT_PUBLIC_`), and keep provider imports out of Client Components.
+- AI runs once per submission in `after()` (`lib/ai/service.ts` → `lib/ai/run.ts`); pages never call it. It must never block or fail a submission: any error → `ai_status = 'fallback'`.
+- The safety rule lives in `lib/ai/safety.ts` and is applied in code after every model call. Don't rely on the prompt alone.
+- AI never writes `requests.priority` (the reporter's). AI → `ai_*` columns; technician choice → `triage_*`. Effective urgency: `lib/urgency.ts`.
+- Every request has a `group_id` (issue group); `createRequest` creates the group + the reporter's vote. Schema changes go in a new file under `supabase/migrations/` AND in `schema.sql`.
+- `npm run test:unit` (mocked AI) after changing `lib/ai/`. Playwright runs with `AI_PROVIDER=off`.
+

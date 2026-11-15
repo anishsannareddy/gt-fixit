@@ -39,6 +39,10 @@ export async function reportIssue(page: Page, title: string): Promise<number> {
   await page.getByRole("option").first().click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toBeVisible();
+  // Buildings with active issues list them first; go on to a new report.
+  const newReport = page.getByRole("button", { name: "Report a new issue" });
+  await expect(newReport.or(sheet.locator("#location_detail"))).toBeVisible();
+  if (await newReport.isVisible()) await newReport.click();
   await sheet.locator("#location_detail").fill("Room 1447");
   await sheet.getByText("Plumbing", { exact: true }).click();
   await sheet.locator("#title").fill(title);

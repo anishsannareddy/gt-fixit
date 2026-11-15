@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNTS, admin, expectToast, signIn } from "./helpers";
+import { ACCOUNTS, admin, deleteRequests, expectToast, reportIssue, signIn } from "./helpers";
 
 // Seeded group: "Ceiling leak in 2nd-floor lounge" in Towers. Dr. Shah (demo.faculty) hasn't voted on it.
 const TOWERS = "Ceiling leak in 2nd-floor lounge";
@@ -77,4 +77,22 @@ test("the report form suggests a matching active issue, and Me too replaces a ne
   await expect(suggestions.getByRole("article", { name: TOWERS })).toBeVisible({ timeout: 10_000 });
   await suggestions.getByRole("button", { name: "Me too" }).click();
   await expect(sheet.getByText("You're counted in")).toBeVisible();
+});
+
+test("with the AI off, submitting still works: reporter's urgency kept, its own issue, reporter counted", async ({ browser }) => {
+  const page = await signIn(browser, ACCOUNTS.student);
+  const id = await reportIssue(page, "E2E fallback check");
+  try {
+    await expect
+      .poll(async () => (await admin().from("requests").select("ai_status").eq("id", id).single()).data?.ai_status, { timeout: 15_000 })
+      .toBe("fallback");
+    const { data } = await admin().from("requests").select("group_id, ai_urgency").eq("id", id).single();
+    expect(data!.ai_urgency).toBeNull();
+    const { count: reports } = await admin().from("requests").select("id", { count: "exact", head: true }).eq("group_id", data!.group_id);
+    expect(reports).toBe(1);
+    const { count: votes } = await admin().from("group_votes").select("user_id", { count: "exact", head: true }).eq("group_id", data!.group_id);
+    expect(votes).toBe(1);
+  } finally {
+    await deleteRequests([id]);
+  }
 });

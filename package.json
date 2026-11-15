@@ -12,7 +12,8 @@
     "check:contrast": "tsx scripts/check-contrast.ts",
     "test:e2e": "playwright test",
     "check:coverage": "tsx scripts/check-coverage.ts",
-    "ai:backfill": "tsx scripts/ai-backfill.ts"
+    "ai:backfill": "tsx scripts/ai-backfill.ts",
+    "test:unit": "tsx --test lib/ai/*.test.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
