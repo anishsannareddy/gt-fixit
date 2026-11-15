@@ -44,7 +44,6 @@ export default async function CommandCenter(props: PageProps<"/admin">) {
     const id = osmId.get(t.building_id);
     if (t.status !== "resolved" && id) openByOsmId[id] = (openByOsmId[id] ?? 0) + 1;
   }
-  const maxOpen = Math.max(0, ...Object.values(openByOsmId));
 
   // ── Filters (all in the URL, so views can be shared and survive refresh) ──
   const status = str("status") || "open"; // "open" = submitted + assigned + in progress
@@ -98,7 +97,7 @@ export default async function CommandCenter(props: PageProps<"/admin">) {
       </section>
 
       <Suspense>
-        <AdminCampusMap counts={openByOsmId} maxCount={maxOpen} buildings={buildings.map((b) => ({ id: b.id, osm_id: b.osm_id }))} />
+        <AdminCampusMap counts={openByOsmId} buildings={buildings.map((b) => ({ id: b.id, osm_id: b.osm_id }))} />
       </Suspense>
 
       <section className="rounded-3xl border border-line bg-white shadow-sm" aria-labelledby="requests-heading">

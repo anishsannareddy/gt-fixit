@@ -209,44 +209,83 @@ function Block({
 }
 
 // ───────── camera ─────────
-/** Camera rig shared by the real campus and this block fallback: overview, slow orbit, fly-to-target. */
+/** A rectangle on the ground, in scene units. */
+export type Frame = { minX: number; maxX: number; minZ: number; maxZ: number };
+
+/**
+ * Camera rig shared by the real campus and this block fallback.
+ *  - hero (landing page): slow auto-orbit, no interaction
+ *  - select / heat: free camera. Drag to rotate, right-drag or two-finger drag to pan,
+ *    scroll or pinch to zoom. The look-at point stays inside `bounds`.
+ *  - flies to `target` when a building is selected, and back to the overview on `resetKey` change
+ */
 export function Rig({
   mode,
   target,
   panel,
   reducedMotion,
+  frame = { minX: -60, maxX: 60, minZ: -60, maxZ: 60 },
+  bounds,
+  resetKey = 0,
 }: {
   mode: CampusMode;
   /** Scene-unit position to fly to, or null for the overview. */
   target: { x: number; z: number } | null;
   panel: "none" | "bottom" | "right";
   reducedMotion: boolean;
+  /** What the overview should fit on screen (the GT buildings). */
+  frame?: Frame;
+  /** Where the camera may look (every building in the data, plus a margin). */
+  bounds?: Frame;
+  /** Change this number to fly back to the overview ("Reset view"). */
+  resetKey?: number;
 }) {
   const controls = useRef<CameraControlsImpl>(null);
   const aspect = useThree((s) => s.size.width / s.size.height);
-  const userMoved = useRef(false);
+  const fov = useThree((s) => (s.camera as THREE.PerspectiveCamera).fov ?? 32);
   const hadTargetRef = useRef(false);
   const smooth = !reducedMotion;
 
-  // Portrait phones need to stand further back to fit the (wide) campus.
+  // Overview: centred on the GT buildings, far enough back to fit them on this screen shape.
   const overview = useMemo(() => {
-    const dist = aspect < 0.8 ? 300 : aspect < 1.3 ? 230 : 175;
-    return { x: 0, y: dist * 0.5, z: dist * 0.86 };
-  }, [aspect]);
+    const cx = (frame.minX + frame.maxX) / 2;
+    const cz = (frame.minZ + frame.maxZ) / 2;
+    const w = frame.maxX - frame.minX;
+    const d = frame.maxZ - frame.minZ;
+    const half = Math.tan(((fov / 2) * Math.PI) / 180);
+    // distance that fits the width horizontally and the (foreshortened) depth vertically
+    const dist = Math.max(w / (2 * half * aspect), (d * 0.75) / (2 * half)) * 1.08;
+    const tilt = 0.95; // radians from straight down
+    return { cx, cz, x: cx, y: dist * Math.cos(tilt), z: cz + dist * Math.sin(tilt), dist };
+  }, [frame, aspect, fov]);
 
-  // Fly to the selected building, or back out to the overview.
+  // Keep the look-at point within the campus.
+  useEffect(() => {
+    const c = controls.current;
+    if (!c || !bounds) return;
+    c.setBoundary(new THREE.Box3(new THREE.Vector3(bounds.minX, -1, bounds.minZ), new THREE.Vector3(bounds.maxX, 30, bounds.maxZ)));
+  }, [bounds]);
+
+  // First frame and "Reset view": go to the overview.
+  useEffect(() => {
+    const c = controls.current;
+    if (!c) return;
+    c.setLookAt(overview.x, overview.y, overview.z, overview.cx, 0, overview.cz, resetKey > 0 && smooth);
+    // overview is deliberately not a dependency: resizing the window shouldn't yank the camera
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
+
+  // Fly to the selected building, keeping the current viewing direction.
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
     const hadTarget = hadTargetRef.current;
     hadTargetRef.current = Boolean(target);
     if (!target) {
-      // Closing a building flies back out. Otherwise only set the overview if the user hasn't moved the camera.
-      if (hadTarget) c.setLookAt(overview.x, overview.y, overview.z, 0, 0, 2, smooth);
-      else if (mode === "hero" || !userMoved.current) c.setLookAt(overview.x, overview.y, overview.z, 0, 0, mode === "hero" ? -4 : 2, false);
+      // Closing the panel: back out a little so the area around the building is visible, without recentering.
+      if (hadTarget) c.dollyTo(Math.max(c.distance, 90), smooth);
       return;
     }
-    // Keep the current viewing direction; just move in close.
     const pos = c.getPosition(new THREE.Vector3());
     const look = c.getTarget(new THREE.Vector3());
     const dir = pos.sub(look).setY(0).normalize();
@@ -258,14 +297,12 @@ export function Rig({
     if (panel === "right") focus.addScaledVector(right, 9);
     const reach = panel === "bottom" ? 52 : 42;
     c.setLookAt(focus.x + dir.x * reach, reach * 0.8, focus.z + dir.z * reach, focus.x, 0, focus.z, smooth);
-    userMoved.current = true;
-  }, [target, panel, overview, mode, smooth]);
+  }, [target, panel, smooth]);
 
-  // Slow auto-orbit until the user takes over (always on in hero mode).
+  // Only the landing page orbits on its own.
   useFrame((_, dt) => {
     const c = controls.current;
-    if (!c || reducedMotion) return;
-    if (mode === "hero" || (!userMoved.current && !target)) c.rotate(dt * (mode === "hero" ? 0.05 : 0.03), 0, false);
+    if (c && mode === "hero" && !reducedMotion) c.rotate(dt * 0.05, 0, false);
   });
 
   return (
@@ -273,17 +310,17 @@ export function Rig({
       ref={controls}
       makeDefault
       enabled={mode !== "hero"}
-      minPolarAngle={0.25}
-      maxPolarAngle={1.25}
-      minDistance={28}
-      maxDistance={340}
+      minPolarAngle={0.15}
+      maxPolarAngle={1.32}
+      minDistance={18}
+      maxDistance={Math.max(420, overview.dist * 1.6)}
+      boundaryFriction={0.4}
       smoothTime={0.45}
       draggingSmoothTime={0.12}
-      dollySpeed={0.6}
-      truckSpeed={1.2}
-      onStart={() => {
-        userMoved.current = true;
-      }}
+      dollySpeed={0.7}
+      truckSpeed={1.6}
+      dollyToCursor
+      infinityDolly={false}
     />
   );
 }

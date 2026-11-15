@@ -6,6 +6,8 @@ import { cn } from "@/components/ui/cn";
 import { CampusCanvas } from "./CampusCanvas";
 import type { CampusView } from "./RealCampusScene";
 import { ZoneLegend } from "./ZoneLegend";
+import { HeatLegend } from "./HeatLegend";
+import { heatBand, type HeatBand } from "@/lib/campus/heat";
 
 const VIEWS: { value: CampusView; label: string }[] = [
   { value: "heat", label: "Open requests" },
@@ -18,12 +20,10 @@ const VIEWS: { value: CampusView; label: string }[] = [
  */
 export function AdminCampusMap({
   counts,
-  maxCount,
   buildings,
 }: {
   /** Open requests per OSM building id. */
   counts: Record<string, number>;
-  maxCount: number;
   /** Database id ↔ OSM id, so a click on the map can become a list filter. */
   buildings: { id: number; osm_id: string | null }[];
 }) {
@@ -38,6 +38,11 @@ export function AdminCampusMap({
     }),
     [buildings],
   );
+  const bandCounts = useMemo(() => {
+    const c: Record<HeatBand, number> = { green: 0, yellow: 0, red: 0 };
+    for (const b of buildings) if (b.osm_id) c[heatBand(counts[b.osm_id] ?? 0)]++;
+    return c;
+  }, [buildings, counts]);
   const selectedId = Number(params.get("building")) || null;
   const selected = selectedId ? (osmById.get(selectedId) ?? null) : null;
 
@@ -82,14 +87,7 @@ export function AdminCampusMap({
         {view === "zone" ? (
           <ZoneLegend className="pointer-events-auto hidden w-44 sm:block" />
         ) : (
-          <div className="glass-strong pointer-events-auto rounded-2xl p-3 shadow-panel">
-            <h3 className="mb-2 text-[0.65rem] font-semibold tracking-[0.18em] text-ink-muted uppercase">Open requests per building</h3>
-            <div className="h-2.5 w-44 rounded-full bg-[linear-gradient(90deg,#1f5688,#f2d16b)]" aria-hidden="true" />
-            <div className="mt-1 flex justify-between font-mono text-[0.7rem] text-ink-muted">
-              <span>0</span>
-              <span>{maxCount}</span>
-            </div>
-          </div>
+          <HeatLegend counts={bandCounts} className="pointer-events-auto" />
         )}
       </div>
       <p className="pointer-events-none absolute bottom-2 left-3 rounded-full bg-white/85 px-3 py-1 text-xs font-medium text-ink-muted shadow-sm">

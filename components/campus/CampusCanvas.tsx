@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Component, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { Component, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { RefreshIcon } from "@/components/ui/Icons";
 import { useIsDesktop, usePrefersReducedMotion } from "@/components/ui/useMediaQuery";
 import { cn } from "@/components/ui/cn";
 import { buildCampus } from "@/lib/campus/layout";
@@ -72,13 +73,14 @@ export function CampusCanvas({
   fallback = null,
   credit = true,
   ...scene
-}: Omit<RealCampusSceneProps, "reducedMotion" | "shadows"> & { fallback?: ReactNode; /** Show the © OpenStreetMap credit in the corner. */ credit?: boolean }) {
+}: Omit<RealCampusSceneProps, "reducedMotion" | "shadows" | "resetKey"> & { fallback?: ReactNode; /** Show the © OpenStreetMap credit in the corner. */ credit?: boolean }) {
   const reducedMotion = usePrefersReducedMotion();
   // Real shadow maps on laptops; a single baked contact shadow on phones.
   const desktop = useIsDesktop();
   // Server render assumes WebGL works; the browser corrects it right after loading if not.
   const supported = useSyncExternalStore(noopSubscribe, hasWebGL, () => true);
   const blocks = useMemo(() => buildCampus(), []);
+  const [resetKey, setResetKey] = useState(0);
   if (!supported) return <>{fallback}</>;
 
   return (
@@ -91,8 +93,18 @@ export function CampusCanvas({
           </SceneBoundary>
         }
       >
-        <RealCampusScene {...scene} reducedMotion={reducedMotion} shadows={desktop ? "full" : "lite"} />
+        <RealCampusScene {...scene} reducedMotion={reducedMotion} shadows={desktop ? "full" : "lite"} resetKey={resetKey} />
       </SceneBoundary>
+      {scene.mode !== "hero" && (
+        <button
+          type="button"
+          onClick={() => setResetKey((k) => k + 1)}
+          className="absolute right-3 bottom-9 z-10 inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-3 text-sm font-semibold text-ink shadow-panel backdrop-blur hover:bg-navy-50 md:bottom-10"
+          title="Fly back to the whole campus"
+        >
+          <RefreshIcon className="size-4" /> Reset view
+        </button>
+      )}
       {credit && <OsmCredit className="absolute right-2 bottom-2 z-10" />}
     </div>
   );

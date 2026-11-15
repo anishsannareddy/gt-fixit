@@ -1,20 +1,21 @@
 "use client";
 
 import { ContactShadows, Html } from "@react-three/drei";
-import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo, useState } from "react";
+import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { AREA_META } from "@/lib/campus/areas";
 import { buildBuildingMesh, buildRoadGeometry, buildingAtFace, HEIGHT_EXAGGERATION, markColorsDirty, paintBuilding } from "@/lib/campus/geometry";
 import { SCALE } from "@/lib/campus/layout";
+import { HEAT_META, heatBand } from "@/lib/campus/heat";
 import { campusBuildings, campusRoads, displayName, isGT, type CampusBuildingInfo } from "@/lib/campus/zones";
-import { Rig, type CampusMode } from "./CampusScene";
+import { Rig, type CampusMode, type Frame } from "./CampusScene";
 
 /**
  * How buildings are coloured:
  *   brand: GT buildings navy with gold roofs, city dimmed (landing page)
  *   zone:  GT buildings by maintenance area
- *   heat:  GT buildings by open-request count (cool navy → gold)
+ *   heat:  GT buildings green / yellow / red by open-request count (thresholds in lib/campus/heat.ts)
  */
 export type CampusView = "brand" | "zone" | "heat";
 
@@ -28,6 +29,8 @@ export type RealCampusSceneProps = {
   /** Where the open panel sits, so the selected building is framed in the visible part of the screen. */
   panel?: "none" | "bottom" | "right";
   view?: CampusView;
+  /** Change this number to fly the camera back to the overview. */
+  resetKey?: number;
   /** Open requests per OSM building id (heat view). */
   counts?: Record<string, number>;
   reducedMotion?: boolean;
@@ -50,13 +53,30 @@ const NON_GT_ROOF = new THREE.Color(AREA_META.non_gt.color).lerp(new THREE.Color
 const GT_WALL = new THREE.Color("#5f86ad");
 const GT_ROOF = new THREE.Color("#cfc18c");
 // Heat view
-const COOL = new THREE.Color("#1f5688");
-const HOT = new THREE.Color("#f2d16b");
+// Heat view: walls a shade darker than roofs so each building still reads as a solid block
+const HEAT_WALL = Object.fromEntries(Object.entries(HEAT_META).map(([k, m]) => [k, new THREE.Color(m.color).multiplyScalar(0.78)]));
+const HEAT_ROOF = Object.fromEntries(Object.entries(HEAT_META).map(([k, m]) => [k, new THREE.Color(m.color).lerp(new THREE.Color("#ffffff"), 0.12)]));
 // Hovered / selected building
 const PICK_WALL = new THREE.Color("#d2ae3c");
 const PICK_ROOF = new THREE.Color("#f5dd85");
 
 const INDEX_BY_ID = new Map(campusBuildings.map((b, i) => [b.id, i]));
+
+/** Bounding rectangle of some buildings' outlines, in scene units. */
+function extent(list: typeof campusBuildings, margin = 0): Frame {
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const b of list) {
+    const r = b.rings[0];
+    for (let i = 0; i < r.length; i += 2) {
+      minX = Math.min(minX, r[i]); maxX = Math.max(maxX, r[i]);
+      minZ = Math.min(minZ, r[i + 1]); maxZ = Math.max(maxZ, r[i + 1]);
+    }
+  }
+  return { minX: minX * SCALE - margin, maxX: maxX * SCALE + margin, minZ: minZ * SCALE - margin, maxZ: maxZ * SCALE + margin };
+}
+/** The overview fits every GT building; the camera may look anywhere in the data, plus a margin. */
+const GT_FRAME = extent(campusBuildings.filter(isGT), 4);
+const ALL_BOUNDS = extent(campusBuildings, 20);
 
 /** Scene-space anchor points for a building: centre, roof height, and how far its outline reaches. */
 function anchor(b: CampusBuildingInfo) {
@@ -109,9 +129,6 @@ function Campus({
   const invalidate = useThree((three) => three.invalidate);
 
   useEffect(() => {
-    const max = Math.max(1, ...Object.values(counts ?? {}));
-    const wall = new THREE.Color();
-    const roof = new THREE.Color();
     campusBuildings.forEach((b, i) => {
       if (!isGT(b)) {
         if (b.zone === "non_gt" && view !== "brand") paintBuilding(mesh, i, NON_GT_WALL, NON_GT_ROOF);
@@ -119,10 +136,8 @@ function Campus({
       } else if (view === "zone") {
         paintBuilding(mesh, i, AREA_WALL[b.zone], AREA_ROOF[b.zone]);
       } else if (view === "heat") {
-        const t = Math.pow((counts?.[b.id] ?? 0) / max, 0.6);
-        wall.copy(COOL).lerp(HOT, t);
-        roof.copy(wall).lerp(HOT, 0.35);
-        paintBuilding(mesh, i, wall, roof);
+        const band = heatBand(counts?.[b.id] ?? 0);
+        paintBuilding(mesh, i, HEAT_WALL[band], HEAT_ROOF[band]);
       } else {
         paintBuilding(mesh, i, GT_WALL, GT_ROOF);
       }
@@ -174,7 +189,7 @@ function Campus({
     <group>
       {/* ground disc: fades into the fog at its edge */}
       <mesh rotation-x={-Math.PI / 2} position-y={-0.02} receiveShadow>
-        <circleGeometry args={[420, 48]} />
+        <circleGeometry args={[700, 64]} />
         <meshStandardMaterial color="#e3e9ef" roughness={1} />
       </mesh>
       <mesh geometry={roads}>
@@ -189,10 +204,59 @@ function Campus({
           <meshBasicMaterial color="#003057" transparent opacity={0.85} depthWrite={false} />
         </mesh>
       )}
+      {view === "heat" && <HotSpotPins counts={counts} />}
       {hovered != null && hovered !== selected && (
         <BuildingLabel b={campusBuildings[hovered]} count={view === "heat" ? (counts?.[campusBuildings[hovered].id] ?? 0) : undefined} />
       )}
       {selected != null && <BuildingLabel b={campusBuildings[selected]} count={view === "heat" ? (counts?.[campusBuildings[selected].id] ?? 0) : undefined} />}
+    </group>
+  );
+}
+
+/**
+ * Red ("hot spot") buildings get a tall pin above the roof with a ring that gently pulses,
+ * so they stand out even for people who can't tell red from green. Static with reduced motion.
+ */
+function HotSpotPins({ counts }: { counts?: Record<string, number> }) {
+  const reduced = useThree((t) => t.frameloop === "demand");
+  const spots = useMemo(
+    () =>
+      campusBuildings
+        .filter((b) => isGT(b) && heatBand(counts?.[b.id] ?? 0) === "red")
+        .map((b) => ({ id: b.id, ...anchor(b) })),
+    [counts],
+  );
+  const rings = useRef<(THREE.Mesh | null)[]>([]);
+  useFrame(({ clock }) => {
+    if (reduced) return;
+    const t = clock.getElapsedTime();
+    rings.current.forEach((m, i) => {
+      if (!m) return;
+      const phase = (t * 0.6 + i * 0.17) % 1; // 0 → 1 every ~1.7s
+      m.scale.setScalar(1 + phase * 1.6);
+      (m.material as THREE.MeshBasicMaterial).opacity = 0.75 * (1 - phase);
+    });
+  });
+  return (
+    <group>
+      {spots.map((p, i) => (
+        <group key={p.id} position={[p.x, 0, p.z]}>
+          {/* pin: thin stem + head, standing well above the roof */}
+          <mesh position-y={p.top + 4}>
+            <cylinderGeometry args={[0.18, 0.18, 8, 6]} />
+            <meshBasicMaterial color={HEAT_META.red.color} />
+          </mesh>
+          <mesh position-y={p.top + 9}>
+            <octahedronGeometry args={[1.5, 0]} />
+            <meshStandardMaterial color={HEAT_META.red.color} emissive={HEAT_META.red.color} emissiveIntensity={0.35} flatShading />
+          </mesh>
+          {/* pulsing ring on the ground */}
+          <mesh ref={(m) => { rings.current[i] = m; }} rotation-x={-Math.PI / 2} position-y={0.15}>
+            <ringGeometry args={[p.reach + 0.5, p.reach + 1.3, 48]} />
+            <meshBasicMaterial color={HEAT_META.red.color} transparent opacity={reduced ? 0.6 : 0.75} depthWrite={false} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }
@@ -206,6 +270,7 @@ export default function RealCampusScene({
   onSelect,
   panel = "none",
   reducedMotion = false,
+  resetKey = 0,
 }: RealCampusSceneProps) {
   const selectedIndex = selected != null ? (INDEX_BY_ID.get(selected) ?? null) : null;
   const target = useMemo(() => {
@@ -217,14 +282,14 @@ export default function RealCampusScene({
     <Canvas
       dpr={[1, 1.5]}
       shadows={shadows === "full" ? "soft" : false}
-      camera={{ fov: 32, near: 1, far: 1200, position: [0, 90, 150] }}
+      camera={{ fov: 32, near: 1, far: 2000, position: [0, 90, 150] }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       frameloop={reducedMotion ? "demand" : "always"}
       aria-label="3D map of the Georgia Tech campus"
       role="img"
     >
       <color attach="background" args={[SKY]} />
-      <fog attach="fog" args={[SKY, 230, 620]} />
+      <fog attach="fog" args={[SKY, 320, 900]} />
       <hemisphereLight args={["#ffffff", "#c9d3dd", 1.6]} />
       <directionalLight
         position={[-120, 170, 90]}
@@ -247,7 +312,7 @@ export default function RealCampusScene({
 
       <Campus view={view} counts={counts} interactive={mode !== "hero"} selected={selectedIndex} onSelect={onSelect} />
 
-      <Rig mode={mode} target={target} panel={panel} reducedMotion={reducedMotion} />
+      <Rig mode={mode} target={target} panel={panel} reducedMotion={reducedMotion} frame={GT_FRAME} bounds={ALL_BOUNDS} resetKey={resetKey} />
     </Canvas>
   );
 }

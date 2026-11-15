@@ -339,7 +339,12 @@ async function main() {
   type RequestRow = Record<string, unknown> & { _events: Record<string, unknown>[] };
   const rows: RequestRow[] = [];
 
-  const FRESH_UNASSIGNED = 9; // brand-new requests nobody has claimed yet
+  const FRESH_UNASSIGNED = 12; // brand-new requests nobody has claimed yet
+  // A few buildings with a real backlog right now, so the admin heat map has hot spots to show
+  // (e.g. an old dorm with failing plumbing, a busy academic building). Thresholds: lib/campus/heat.ts
+  const HOTSPOTS = [/Glenn Residence Hall$/, /Towers Residence Hall$/, /Clough/, /Howey Building$/, /Student Center$/]
+    .map((re) => buildings.find((b) => re.test(b.name)))
+    .filter((b): b is (typeof buildings)[number] => Boolean(b));
   for (let i = 0; i < TARGET_REQUESTS * 1.4 && rows.length < TARGET_REQUESTS; i++) {
     // The first few iterations are fresh, unclaimed requests from the last ~30 hours.
     // After that: more recent days a bit busier; August move-in spike; fewer on weekends.
@@ -361,6 +366,14 @@ async function main() {
       CATEGORY_WEIGHTS.map(([c, w]) => [c, c === "HVAC / Temperature" && warm ? w * 2 : w] as const),
     );
     let building = weighted(buildingWeights);
+    // Recent requests cluster in the hot-spot buildings (the first two get the most).
+    let hot = false;
+    if (daysAgo < 12 && HOTSPOTS.length && rand() < 0.6) {
+      // First two: badly backed up (red). The rest: busy but coping (yellow).
+      const i = HOTSPOTS.indexOf(weighted(HOTSPOTS.map((b, j) => [b, j < 2 ? 3 : 1] as const)));
+      building = HOTSPOTS[i];
+      hot = i < 2;
+    }
     let issue = pick(ISSUES[category]);
     if (building.type !== "residence" && NON_RESIDENCE_CATEGORIES.has(issue.title)) {
       issue = ISSUES[category][0];
@@ -378,7 +391,8 @@ async function main() {
     // Status depends on age: almost everything older than ~10 days is resolved.
     const [minH, maxH] = RESOLVE_HOURS[priority];
     // The last few days have a backlog, so the live queue has real work in it
-    const backlog = daysAgo < 6 ? between(1.5, 3) : 1;
+    // Hot-spot buildings are backed up, so their requests take much longer to clear.
+    const backlog = hot ? between(3, 6) : daysAgo < 6 ? between(1.5, 3) : 1;
     const resolveHours = between(minH, maxH) * (category === "Elevator" ? 1.6 : 1) * backlog;
     const ageHours = (now - created.getTime()) / HOUR;
     const assignAfter = Math.min(resolveHours * between(0.1, 0.3), between(0.3, 8));
