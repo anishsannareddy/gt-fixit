@@ -121,12 +121,28 @@ export function paintBuilding(mesh: BuildingMesh, i: number, wallColor: THREE.Co
   }
 }
 export function markColorsDirty(mesh: BuildingMesh): void {
-  mesh.geometry.getAttribute("color").needsUpdate = true;
+  const colors = mesh.geometry.getAttribute("color") as THREE.BufferAttribute;
+  colors.clearUpdateRanges(); // whole buffer
+  colors.needsUpdate = true;
+}
+/** Upload only building i's colours (hover / selection changes), instead of the whole buffer. */
+export function markBuildingDirty(mesh: BuildingMesh, i: number): void {
+  const colors = mesh.geometry.getAttribute("color") as THREE.BufferAttribute;
+  colors.addUpdateRange(mesh.starts[i] * 3, (mesh.starts[i + 1] - mesh.starts[i]) * 3);
+  colors.needsUpdate = true;
 }
 
-/** Which building owns this triangle? (Used for click/hover picking on the merged mesh.) */
+/** Which building owns this triangle? Only valid while the geometry has no index (no BVH). */
 export function buildingAtFace(mesh: BuildingMesh, faceIndex: number): number {
-  const vertex = faceIndex * 3;
+  return buildingAtVertex(mesh, faceIndex * 3);
+}
+
+/**
+ * Which building owns this vertex? Use the hit's `face.a` for picking: a BVH adds an index
+ * buffer and reorders triangles, so `faceIndex` no longer lines up with the building ranges,
+ * but vertex numbers never move.
+ */
+export function buildingAtVertex(mesh: BuildingMesh, vertex: number): number {
   let lo = 0, hi = mesh.starts.length - 2;
   while (lo < hi) {
     const mid = (lo + hi + 1) >> 1;

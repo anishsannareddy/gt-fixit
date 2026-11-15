@@ -21,9 +21,9 @@ Campus maintenance app for the Georgia Tech Campus Solutions Challenge. See READ
 
 ## 3D campus and maintenance areas
 - `data/campus.json`: OpenStreetMap footprints + roads (from `scripts/fetch-osm.ts`). `data/zones.json`: building → maintenance area, read off the GT Facilities zone map (`scripts/assign-zones.py`). Both are static and committed; nothing calls OSM at runtime.
-- Hand corrections go in `data/zone-overrides.json` (OSM id → `area` / `name` / `number`), never in the generated files. After changing it, run `npm run seed`.
+- Hand corrections go in `data/zone-overrides.json` (OSM id → `area` / `name` / `number` / `aliases` / `note`), never in the generated files. After changing it, run `npm run buildings:sync` (or `npm run seed`). Buildings are upserted by `osm_id` and never deleted, so ids are stable.
 - `lib/campus/areas.ts` (area list, labels, colours; cheap to import) vs `lib/campus/zones.ts` (imports the big JSON; only import it in the 3D scene, server code, or scripts).
-- `components/campus/RealCampusScene.tsx` draws all buildings as ONE merged mesh; colours and picking work through per-building vertex ranges in `lib/campus/geometry.ts`. Use `CampusCanvas` to embed it (handles client-only loading and fallbacks).
+- `components/campus/RealCampusScene.tsx` draws the buildings as TWO merged meshes: the city (never raycast) and the GT buildings (raycast through a three-mesh-bvh tree built once). Colours and picking work through per-building vertex ranges in `lib/campus/geometry.ts`; hover/selection repaint only the changed buildings (`markBuildingDirty`). No shadow maps (one baked ContactShadows), pixel ratio capped at 1.5 and dropped to 1 by `PerformanceMonitor` when fps < 40. Avoid per-frame React state. Use `CampusCanvas` to embed it (handles client-only loading and fallbacks). Measure with `npm run perf:map` (`PERF_GPU=0` for the software renderer).
 - A request's `area` is copied from its building in `createRequest`. The `buildings` table is loaded from the data files by the seed, keyed by `osm_id`.
 
 ## Testing
@@ -35,7 +35,14 @@ Campus maintenance app for the Georgia Tech Campus Solutions Challenge. See READ
 - `lib/ai/provider.ts` is the ONLY file that imports `openai`. Everything else calls `generateStructured`. Never expose `OPENAI_API_KEY` (no `NEXT_PUBLIC_`), and keep provider imports out of Client Components.
 - AI runs once per submission in `after()` (`lib/ai/service.ts` → `lib/ai/run.ts`); pages never call it. It must never block or fail a submission: any error → `ai_status = 'fallback'`.
 - The safety rule lives in `lib/ai/safety.ts` and is applied in code after every model call. Don't rely on the prompt alone.
+- Smart Sort reviews only requests reported Urgent/High (`ai_reviewed`). Medium/Low keep the reporter's urgency; `escalateForHazard` in `lib/ai/safety.ts` raises them for hazards (severe → Urgent, other → High). Medium/Low public requests still get one AI call, for duplicate grouping only. Private requests are never grouped.
 - AI never writes `requests.priority` (the reporter's). AI → `ai_*` columns; technician choice → `triage_*`. Effective urgency: `lib/urgency.ts`.
 - Every request has a `group_id` (issue group); `createRequest` creates the group + the reporter's vote. Schema changes go in a new file under `supabase/migrations/` AND in `schema.sql`.
 - `npm run test:unit` (mocked AI) after changing `lib/ai/`. Playwright runs with `AI_PROVIDER=off`.
 
+
+## Round 3 conventions
+- Private requests (`visibility = 'private'`) never join a shared issue group, never appear in Active issues or suggestions, and get no vote. Filter `visibility = 'public'` in anything student-facing.
+- Smart Sort stacks (technicians only) are built in `app/tech/page.tsx` from the already-filtered tab list; stack actions go through `updateStack` in `app/requests/actions.ts`, which reuses `checkAllowed` + `commit` per report (one event each).
+- A report merged into a group someone is already handling inherits the assignee and status (`inheritGroupWork` in `lib/ai/run.ts`).
+- Deleting: `deleteRequest` (server action) + `delete_request()` (SQL, one transaction); permissions in `lib/permissions.ts`.

@@ -72,10 +72,17 @@ export function OsmCredit({ className }: { className?: string }) {
 export function CampusCanvas({
   fallback = null,
   credit = true,
+  showReset = true,
   ...scene
-}: Omit<RealCampusSceneProps, "reducedMotion" | "shadows" | "resetKey"> & { fallback?: ReactNode; /** Show the © OpenStreetMap credit in the corner. */ credit?: boolean }) {
+}: Omit<RealCampusSceneProps, "reducedMotion" | "quality" | "resetKey"> & {
+  fallback?: ReactNode;
+  /** Show the © OpenStreetMap credit in the corner. */
+  credit?: boolean;
+  /** Show the "Reset view" button (the student map hides it; it orbits back on its own). */
+  showReset?: boolean;
+}) {
   const reducedMotion = usePrefersReducedMotion();
-  // Real shadow maps on laptops; a single baked contact shadow on phones.
+  // Phones: no antialiasing (the pixel ratio already smooths edges) and a lower quality ceiling.
   const desktop = useIsDesktop();
   // Server render assumes WebGL works; the browser corrects it right after loading if not.
   const supported = useSyncExternalStore(noopSubscribe, hasWebGL, () => true);
@@ -93,9 +100,9 @@ export function CampusCanvas({
           </SceneBoundary>
         }
       >
-        <RealCampusScene {...scene} reducedMotion={reducedMotion} shadows={desktop ? "full" : "lite"} resetKey={resetKey} />
+        <RealCampusScene {...scene} reducedMotion={reducedMotion} quality={desktop ? "desktop" : "phone"} resetKey={resetKey} />
       </SceneBoundary>
-      {scene.mode !== "hero" && (
+      {scene.mode !== "hero" && showReset && (
         <button
           type="button"
           onClick={() => setResetKey((k) => k + 1)}

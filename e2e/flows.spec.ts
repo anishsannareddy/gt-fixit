@@ -101,4 +101,21 @@ test("admin filters by building, opens the drawer, and manages a request; the te
   await page.getByRole("link", { name: "Analytics" }).first().click();
   await expect(page).toHaveURL(/\/admin\/analytics/);
   await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
+  // The 30-day numbers moved here from the Command Center
+  for (const label of [/^Submitted/, /^Resolved/, /Avg\. time to resolve/]) await expect(page.getByText(label).first()).toBeVisible();
+});
+
+test("Command Center shows three KPI cards and long names stay inside their boxes", async ({ browser }) => {
+  const page = await signIn(browser, ACCOUNTS.admin);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/admin");
+  const kpis = page.getByRole("region", { name: "Key numbers" });
+  await expect(kpis.locator(":scope > div")).toHaveCount(3);
+  await expect(page.getByRole("main").getByRole("link", { name: "Analytics" })).toHaveCount(0);
+
+  // The sidebar profile card: the role text must not spill past the card
+  const card = page.locator("aside").getByRole("button", { name: /Account menu/ });
+  const role = card.getByText("Facilities Operations Manager");
+  const [cb, rb] = await Promise.all([card.boundingBox(), role.boundingBox()]);
+  expect(rb!.x + rb!.width).toBeLessThanOrEqual(cb!.x + cb!.width + 1);
 });

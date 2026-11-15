@@ -2,14 +2,16 @@
  * Seeds Supabase with realistic demo data.
  *   npm run seed
  *
- * Safe to re-run: it deletes all requests/users/buildings first, then reinserts.
+ * Safe to re-run: it deletes all requests and users first, then reinserts. Buildings are upserted by
+ * OpenStreetMap id (never deleted), so their database ids stay the same across re-seeds.
  * Uses a fixed random seed so everyone on the team gets the same-looking data
  * (dates are relative to "now", so the dashboard always looks current).
  */
 import { config } from "dotenv";
+import { escalateForHazard, isReviewedUrgency } from "../lib/ai/safety";
 import { createClient } from "@supabase/supabase-js";
 import { AREA_META, type Area } from "../lib/campus/areas";
-import { campusBuildings, isGT, type CampusBuildingInfo } from "../lib/campus/zones";
+import { syncBuildings } from "./buildings";
 import { DEMO_ACCOUNTS, demoPassword } from "../lib/demo-accounts";
 
 config({ path: ".env.local" });
@@ -50,39 +52,6 @@ const HOUR = 3_600_000;
 
 // ---------- reference data ----------
 type BType = "residence" | "academic" | "dining" | "athletic" | "other";
-/**
- * Buildings come from the real campus data: every OpenStreetMap footprint that the GT Facilities
- * zone map colours with a maintenance area (data/campus.json + data/zones.json + data/zone-overrides.json).
- */
-function shortName(name: string): string {
-  const short = name
-    .replace(/ (Residence Hall|Building|Memorial Library|Apartments|Hall)\b/g, "")
-    .replace(/^(The|Georgia Tech) /, "")
-    .trim();
-  return short.length > 24 ? short.slice(0, 23).trimEnd() + "…" : short;
-}
-
-function typeOf(b: CampusBuildingInfo & { zone: Area }): BType {
-  const name = b.name ?? "";
-  if (/dining|brittain/i.test(name)) return "dining";
-  if (b.zone === "housing") return "residence";
-  if (b.zone === "gtaa" || /recreation|stadium|pavilion|coliseum|gym/i.test(name)) return "athletic";
-  if (b.zone === "parking" || /parking|deck/i.test(name)) return "other";
-  return "academic";
-}
-
-function campusRows() {
-  const used = new Map<string, number>();
-  return campusBuildings.filter(isGT).map((b) => {
-    // Names must be unique in the table; OSM has a few repeats and some unnamed buildings.
-    const base = b.name ?? `Unnamed building (${AREA_META[b.zone].label})`;
-    const n = (used.get(base) ?? 0) + 1;
-    used.set(base, n);
-    const name = n === 1 ? base : `${base} #${n}`;
-    return { name, short_name: shortName(name), type: typeOf(b), number: b.number, area: b.zone, lat: b.lat, lng: b.lng, osm_id: b.id };
-  });
-}
-
 type U = "low" | "medium" | "high" | "urgent";
 /** One kind of issue. `ai` is the pre-baked AI rating, so the demo works without the OpenAI API. */
 type Seed = { title: string; desc: string; priority: [string, number][]; ai: [U, string, boolean?] };
@@ -182,30 +151,32 @@ const RESOLUTION_NOTES: Record<string, string[]> = {
   Other: ["Repaired window track.", "Replaced ceiling tile."],
 };
 
-const FLOORS = ["1st floor", "2nd floor", "3rd floor", "4th floor", "Basement"];
+/** Same format the report form produces: "Room 214" / "Room 1116A", or one of the form's spots. */
+const room = (floors: number, perFloor: number) => `Room ${Math.floor(between(1, floors + 1))}${String(Math.floor(between(1, perFloor))).padStart(2, "0")}`;
 function locationFor(type: BType): string {
   switch (type) {
     case "residence":
       return weighted([
-        [`Room ${Math.floor(between(1, 5))}${String(Math.floor(between(1, 40))).padStart(2, "0")}`, 6],
-        [`${pick(FLOORS)} hallway`, 2],
-        ["Laundry room", 1],
-        [`${pick(FLOORS)} bathroom`, 2],
+        [room(4, 40), 6],
+        ["Hallway", 2],
+        ["Restroom", 2],
         ["Lobby", 1],
+        ["Stairwell", 1],
       ]);
     case "academic":
       return weighted([
-        [`Room ${Math.floor(between(1, 4))}${String(Math.floor(between(1, 60))).padStart(2, "0")}`, 5],
-        [`${pick(FLOORS)} restroom`, 3],
-        [`${pick(FLOORS)} study area`, 2],
-        ["Main entrance", 1],
+        [room(3, 60), 5],
+        ["Restroom", 3],
+        ["Hallway", 2],
+        ["Lobby", 1],
+        ["Elevator", 1],
       ]);
     case "dining":
-      return pick(["Seating area", "Restroom", "Entrance", "Beverage station"]);
+      return pick(["Lobby", "Restroom", "Hallway", "Outdoors"]);
     case "athletic":
-      return pick(["Locker room", "Weight room", "Pool deck", "Main entrance"]);
+      return pick(["Room 101", "Room 120", "Lobby", "Outdoors"]);
     default:
-      return pick(["1st floor", "2nd floor", "Restroom", "Lobby"]);
+      return pick([room(2, 30), "Hallway", "Restroom", "Lobby"]);
   }
 }
 
@@ -213,8 +184,26 @@ function locationFor(type: BType): string {
 const U_RANK: Record<U, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
 const maxU = (a: U, b: U): U => (U_RANK[a] >= U_RANK[b] ? a : b);
 /** Pre-baked AI fields (stored exactly like a real AI result, marked ai_model = "seed"). */
-function aiFields(urgency: U, reason: string, safety: boolean, category: string, created: Date) {
-  return { ai_urgency: urgency, ai_reason: reason, ai_category: category, ai_safety: safety, ai_status: "done", ai_model: "seed", ai_at: new Date(created.getTime() + 2000).toISOString() };
+/**
+ * Same rules as lib/ai/run.ts: Smart Sort reviews only reports marked Urgent/High (the template's AI
+ * rating); Medium/Low keep the reporter's urgency unless the text describes a hazard (then escalated).
+ */
+function aiFields(reporter: U, urgency: U, reason: string, safety: boolean, category: string, created: Date, text: string) {
+  const at = new Date(created.getTime() + 2000).toISOString();
+  if (isReviewedUrgency(reporter)) {
+    return { ai_urgency: urgency, ai_reason: reason, ai_category: category, ai_safety: safety, ai_status: "done", ai_model: "seed", ai_reviewed: true, ai_at: at };
+  }
+  const esc = escalateForHazard(reporter, text, safety);
+  return {
+    ai_urgency: esc.urgency,
+    ai_reason: esc.escalated ? reason : null,
+    ai_category: category,
+    ai_safety: esc.escalated,
+    ai_status: "done",
+    ai_model: "seed",
+    ai_reviewed: esc.escalated,
+    ai_at: at,
+  };
 }
 
 type Report = { title: string; desc: string; loc: string; priority: U; hoursAgo: number; by?: "alex" | "priya"; status?: "assigned" | "in_progress" };
@@ -239,11 +228,11 @@ const CLUSTERS: Cluster[] = [
     ai: ["high", "Active ceiling leak reported by several residents; risk of water damage and slippery floors.", true],
     extraVotes: 6,
     reports: [
-      { title: "Water leaking from ceiling", desc: "Water dripping from a ceiling tile outside room 312, bucket placed underneath.", loc: "3rd floor hallway", priority: "urgent", hoursAgo: 30, status: "in_progress" },
-      { title: "Ceiling dripping in hallway", desc: "Steady drip from the ceiling near the stairwell on the 3rd floor. Floor is wet.", loc: "3rd floor hallway", priority: "high", hoursAgo: 26, by: "alex" },
-      { title: "Leak above bathroom", desc: "Brown water stain spreading on the bathroom ceiling and it's dripping now.", loc: "3rd floor bathroom", priority: "medium", hoursAgo: 20 },
+      { title: "Water leaking from ceiling", desc: "Water dripping from a ceiling tile outside room 312, bucket placed underneath.", loc: "Hallway", priority: "urgent", hoursAgo: 30, status: "in_progress" },
+      { title: "Ceiling dripping in hallway", desc: "Steady drip from the ceiling near the stairwell on the 3rd floor. Floor is wet.", loc: "Hallway", priority: "high", hoursAgo: 26, by: "alex" },
+      { title: "Leak above bathroom", desc: "Brown water stain spreading on the bathroom ceiling and it's dripping now.", loc: "Restroom", priority: "medium", hoursAgo: 20 },
       { title: "Water coming through ceiling tile", desc: "Ceiling tile is soaked and sagging, water dripping onto the carpet.", loc: "Room 314", priority: "high", hoursAgo: 9 },
-      { title: "Wet ceiling 3rd floor", desc: "Same leak others reported, still dripping tonight.", loc: "3rd floor hallway", priority: "low", hoursAgo: 3 },
+      { title: "Wet ceiling 3rd floor", desc: "Same leak others reported, still dripping tonight.", loc: "Hallway", priority: "low", hoursAgo: 3 },
     ],
   },
   {
@@ -254,10 +243,10 @@ const CLUSTERS: Cluster[] = [
     ai: ["high", "Ongoing leak with several reports; water near the lounge floor is a slip risk.", true],
     extraVotes: 5,
     reports: [
-      { title: "Water leaking from ceiling", desc: "Water dripping from the ceiling in the 2nd floor lounge onto the couches.", loc: "2nd floor lounge", priority: "urgent", hoursAgo: 22 },
-      { title: "Lounge ceiling leaking", desc: "Puddle forming under a ceiling vent in the lounge.", loc: "2nd floor lounge", priority: "high", hoursAgo: 15 },
-      { title: "Drip from ceiling vent", desc: "Water dripping out of the ceiling vent next to the lounge windows.", loc: "2nd floor lounge", priority: "medium", hoursAgo: 7 },
-      { title: "Leak in lounge still going", desc: "The lounge ceiling is still leaking, there are towels everywhere.", loc: "2nd floor lounge", priority: "high", hoursAgo: 2 },
+      { title: "Water leaking from ceiling", desc: "Water dripping from the ceiling in the 2nd floor lounge onto the couches.", loc: "Room 205", priority: "urgent", hoursAgo: 22 },
+      { title: "Lounge ceiling leaking", desc: "Puddle forming under a ceiling vent in the lounge.", loc: "Room 205", priority: "high", hoursAgo: 15 },
+      { title: "Drip from ceiling vent", desc: "Water dripping out of the ceiling vent next to the lounge windows.", loc: "Room 205", priority: "medium", hoursAgo: 7 },
+      { title: "Leak in lounge still going", desc: "The lounge ceiling is still leaking, there are towels everywhere.", loc: "Room 205", priority: "high", hoursAgo: 2 },
     ],
   },
   {
@@ -268,8 +257,8 @@ const CLUSTERS: Cluster[] = [
     ai: ["high", "The east elevator is down, blocking step-free access to upper floors.", true],
     extraVotes: 3,
     reports: [
-      { title: "Elevator out of service", desc: "East elevator doors won't open on any floor.", loc: "East elevator", priority: "high", hoursAgo: 18, status: "assigned" },
-      { title: "East elevator broken", desc: "East elevator is stuck on the 4th floor and won't come when called.", loc: "East elevator", priority: "urgent", hoursAgo: 6 },
+      { title: "Elevator out of service", desc: "East elevator doors won't open on any floor.", loc: "Elevator", priority: "high", hoursAgo: 18, status: "assigned" },
+      { title: "East elevator broken", desc: "East elevator is stuck on the 4th floor and won't come when called.", loc: "Elevator", priority: "urgent", hoursAgo: 6 },
     ],
   },
   {
@@ -292,8 +281,8 @@ const CLUSTERS: Cluster[] = [
     ai: ["high", "The side entrance won't open for anyone, so people prop the door.", true],
     extraVotes: 2,
     reports: [
-      { title: "Card reader not working", desc: "BuzzCard reader at the side entrance flashes red for every card.", loc: "Side entrance", priority: "high", hoursAgo: 12 },
-      { title: "Side door won't open", desc: "Side door card reader is broken, everyone has to walk around.", loc: "Side entrance", priority: "medium", hoursAgo: 5 },
+      { title: "Card reader not working", desc: "BuzzCard reader at the side entrance flashes red for every card.", loc: "Lobby", priority: "high", hoursAgo: 12 },
+      { title: "Side door won't open", desc: "Side door card reader is broken, everyone has to walk around.", loc: "Lobby", priority: "medium", hoursAgo: 5 },
     ],
   },
   // Mislabeled urgencies: single reports where the AI disagrees with the reporter.
@@ -313,7 +302,7 @@ const CLUSTERS: Cluster[] = [
     groupTitle: "Faint gas smell near stove",
     ai: ["urgent", "A gas smell is a potential safety hazard and should be checked right away.", true],
     extraVotes: 1,
-    reports: [{ title: "Faint gas smell in kitchen", desc: "Faint gas-like smell near the stove in the 2nd floor kitchen since this afternoon. Probably nothing.", loc: "2nd floor kitchen", priority: "low", hoursAgo: 3 }],
+    reports: [{ title: "Faint gas smell in kitchen", desc: "Faint gas-like smell near the stove in the 2nd floor kitchen since this afternoon. Probably nothing.", loc: "Room 210", priority: "low", hoursAgo: 3 }],
   },
   {
     key: "warm-room",
@@ -331,7 +320,7 @@ const CLUSTERS: Cluster[] = [
     groupTitle: "Wobbly study table",
     ai: ["low", "A wobbly table is a minor annoyance with no risk."],
     extraVotes: 0,
-    reports: [{ title: "Wobbly desk", desc: "Study table on the 3rd floor wobbles when you write on it.", loc: "3rd floor study area", priority: "high", hoursAgo: 10 }],
+    reports: [{ title: "Wobbly desk", desc: "Study table on the 3rd floor wobbles when you write on it.", loc: "Room 312", priority: "high", hoursAgo: 10 }],
   },
 ];
 
@@ -407,10 +396,6 @@ async function wipe() {
     const { error } = await supabase.from("users").delete().not("id", "is", null);
     if (error) throw new Error(`wipe users: ${error.message}`);
   }
-  {
-    const { error } = await supabase.from("buildings").delete().gte("id", 0);
-    if (error) throw new Error(`wipe buildings: ${error.message}`);
-  }
   console.log("✓ Cleared old data");
 }
 
@@ -419,12 +404,7 @@ async function main() {
   await ensureBucket();
   await wipe();
 
-  const buildings = (await insertChunked("buildings", campusRows(), "id, name, type, area")) as {
-    id: number;
-    name: string;
-    type: BType;
-    area: Area;
-  }[];
+  const buildings = (await syncBuildings(supabase)) as { id: number; name: string; type: BType; area: Area }[];
   const perArea = buildings.reduce<Record<string, number>>((m, b) => ((m[b.area] = (m[b.area] ?? 0) + 1), m), {});
   console.log(`✓ ${buildings.length} GT buildings (${Object.entries(perArea).map(([a, n]) => `${AREA_META[a as Area].label}: ${n}`).join(", ")})`);
 
@@ -568,10 +548,14 @@ async function main() {
     }
 
     const [aiU, aiWhy, aiSafety] = issue.ai;
+    // About 1 in 13 reports is private (deterministic, so the rest of the random data doesn't shift).
+    const isPrivate = rows.length % 13 === 5;
     rows.push({
       // Open, recent reports of the same issue in the same building share a group (what the AI would do).
-      _group: status !== "resolved" && daysAgo < 30 ? `${building.id}|${issue.title}` : `solo-${rows.length}`,
-      ...aiFields(aiSafety ? maxU(aiU, priority as U) : aiU, aiWhy, Boolean(aiSafety), category, created),
+      // Private reports are never grouped.
+      _group: !isPrivate && status !== "resolved" && daysAgo < 30 ? `${building.id}|${issue.title}` : `solo-${rows.length}`,
+      visibility: isPrivate ? "private" : "public",
+      ...aiFields(priority as U, aiSafety ? maxU(aiU, priority as U) : aiU, aiWhy, Boolean(aiSafety), category, created, `${issue.title}. ${issue.desc}`),
       title: issue.title,
       description: issue.desc,
       building_id: building.id,
@@ -627,12 +611,13 @@ async function main() {
         _group: c.key,
         _groupTitle: c.groupTitle,
         _extraVotes: i === 0 ? c.extraVotes : 0,
-        ...aiFields(c.ai[2] ? maxU(c.ai[0], r.priority) : c.ai[0], c.ai[1], Boolean(c.ai[2]), c.category, created),
+        ...aiFields(r.priority, c.ai[2] ? maxU(c.ai[0], r.priority) : c.ai[0], c.ai[1], Boolean(c.ai[2]), c.category, created, `${r.title}. ${r.desc}`),
         title: r.title,
         description: r.desc,
         building_id: building.id,
         area: building.area,
         location_detail: r.loc,
+        visibility: "public",
         category: c.category,
         priority: r.priority,
         status: r.status ?? "submitted",
@@ -646,6 +631,24 @@ async function main() {
       });
     });
     curated++;
+  }
+
+  // One of Alex's own open reports (outside the curated groups) is private, to demo the Private badge.
+  const alexPrivate = rows.find((r) => r.reporter_id === alex.id && r.status !== "resolved" && !CLUSTERS.some((c) => c.key === r._group));
+  if (alexPrivate) {
+    alexPrivate.visibility = "private";
+    alexPrivate._group = `solo-alex-private`;
+  }
+  // The demo personas start under the "5 reports per hour" limit: nothing of theirs in the last 2 hours.
+  for (const r of rows) {
+    if (demoReporters.some((d) => d.id === r.reporter_id) && Date.parse(String(r.created_at)) > now - 2 * HOUR) {
+      const shift = now - 2 * HOUR - Date.parse(String(r.created_at)) - HOUR;
+      const move = (t: unknown) => (t ? new Date(Date.parse(String(t)) + shift).toISOString() : t);
+      r.created_at = move(r.created_at);
+      r.updated_at = move(r.updated_at);
+      r.resolved_at = move(r.resolved_at);
+      for (const e of r._events) e.created_at = move(e.created_at);
+    }
   }
 
   rows.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
@@ -676,6 +679,7 @@ async function main() {
   // Votes: every reporter counts as a vote on their group, plus extra "Me too" votes from other students.
   const votes = new Map<string, Record<string, unknown>>();
   rows.forEach((r) => {
+    if (r.visibility === "private") return; // private requests never count toward "students affected"
     const gid = groupId.get(r._group)!;
     votes.set(`${gid}|${r.reporter_id}`, { group_id: gid, user_id: r.reporter_id, created_at: r.created_at });
   });

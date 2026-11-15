@@ -1,1 +1,295 @@
-{}
+{
+  "w1355836113": {
+    "area": "area5",
+    "name": "George Tower / Scheller Tower",
+    "aliases": [
+      "George Tower",
+      "Scheller Tower"
+    ],
+    "note": "Added. OSM 'George Tower | Scheller Tower'; map label 'George Tower / Scheller Tower'. Tech Square, across 5th St from Scheller (Area 5)."
+  },
+  "w714119667": {
+    "area": "area5",
+    "name": "Coda Building",
+    "aliases": [
+      "CODA"
+    ],
+    "note": "Added to Area 5 (Tech Square). Map label 'Coda Building'; zone map had it as not-GT."
+  },
+  "w42706826": {
+    "area": "area5",
+    "note": "Added to Area 5 (Tech Square). Map label 'Centergy One'."
+  },
+  "r3321072": {
+    "area": "area5",
+    "note": "Added to Area 5 (Tech Square). Map label 'Georgia Tech Hotel & Conference Center'."
+  },
+  "w886034013": {
+    "area": "area5",
+    "aliases": [
+      "Biltmore"
+    ],
+    "note": "Added to Area 5 (Tech Square). Map label 'Biltmore'."
+  },
+  "w42726928": {
+    "area": "housing",
+    "note": "Added to Housing, like Tenth and Home A and C-G."
+  },
+  "w42831367": {
+    "name": "Charles A. Smithgall, Jr. Student Services Building",
+    "aliases": [
+      "Flag Building",
+      "Smithgall"
+    ],
+    "note": "Renamed from 'Flag Building (Charles A. Smithgall Jr. Building)' to the map name."
+  },
+  "w43330481": {
+    "name": "Paper Tricentennial Building",
+    "aliases": [
+      "Institute of Paper Science and Technology",
+      "IPST"
+    ],
+    "note": "Renamed to the map name 'Paper Tricentennial'."
+  },
+  "w42726641": {
+    "name": "McCamish Pavilion",
+    "aliases": [
+      "Alexander Memorial Coliseum",
+      "Hank McCamish Pavilion"
+    ],
+    "note": "Renamed to the map name."
+  },
+  "w42725820": {
+    "name": "Academy of Medicine",
+    "aliases": [
+      "The Historic Academy of Medicine"
+    ],
+    "note": "Renamed to the map name."
+  },
+  "w43330499": {
+    "name": "Crecine Residence Hall",
+    "aliases": [
+      "John Patrick Crecine Apartments",
+      "Crecine Apartments"
+    ],
+    "note": "Renamed to the map name 'Crecine Residence Hall'."
+  },
+  "w42726177": {
+    "name": "O'Keefe Gym / Women's Softball Locker Rooms",
+    "aliases": [
+      "O'Keefe Gymnasium"
+    ],
+    "note": "Renamed to the map name."
+  },
+  "w43330545": {
+    "name": "Center Street Apartments North",
+    "aliases": [
+      "Center Street Apartments"
+    ],
+    "note": "Map labels this building 'North' (Center Street Apartments); both buildings had the same name."
+  },
+  "w43330596": {
+    "name": "Center Street Apartments South",
+    "aliases": [
+      "Center Street Apartments"
+    ],
+    "note": "Map labels this building 'South'."
+  },
+  "w42706709": {
+    "name": "Lettie Pate Whitehead Evans Administration Building",
+    "aliases": [
+      "Evans Administration Building"
+    ],
+    "note": "Spelling fix ('Whithead')."
+  },
+  "w42706740": {
+    "name": "Julius L. Brown Residence Hall",
+    "note": "Spelling fix ('Julis'); map label 'Brown Residence Hall'."
+  },
+  "r3156682_1": {
+    "name": "Russ Chandler Stadium at Mac Nease Baseball Park",
+    "aliases": [
+      "Russ Chandler Stadium",
+      "Baseball stadium"
+    ],
+    "note": "Was unnamed. Matches the map label's position."
+  },
+  "r3156682_2": {
+    "name": "Russ Chandler Stadium at Mac Nease Baseball Park",
+    "aliases": [
+      "Russ Chandler Stadium",
+      "Baseball stadium"
+    ],
+    "note": "Was unnamed (second part of the same stadium)."
+  },
+  "w42706712": {
+    "name": "Bobby Dodd Stadium West Stands",
+    "aliases": [
+      "Bobby Dodd Stadium",
+      "Football stadium",
+      "Hyundai Field"
+    ],
+    "note": "Was unnamed; position matches Bobby Dodd Stadium's west grandstand."
+  },
+  "w245699027": {
+    "name": "Bobby Dodd Stadium East Stands",
+    "aliases": [
+      "Bobby Dodd Stadium",
+      "Football stadium",
+      "Hyundai Field"
+    ],
+    "note": "Was unnamed; position matches Bobby Dodd Stadium's east grandstand."
+  },
+  "w43330604": {
+    "name": "10th Street Plant",
+    "aliases": [
+      "10th St Plant"
+    ],
+    "note": "Was unnamed; matches the map label '10th St Plant'."
+  },
+  "w43330608": {
+    "name": "10th Street Plant",
+    "aliases": [
+      "10th St Plant"
+    ],
+    "note": "Was unnamed (second footprint at the same plant)."
+  },
+  "w42796728": {
+    "aliases": [
+      "Molecular Science & Engineering",
+      "Molecular Science and Engineering",
+      "MoSE"
+    ],
+    "note": "Kept our name; the map's name is a search alias (your choice)."
+  },
+  "w42726571": {
+    "aliases": [
+      "ACC Network Production Center"
+    ],
+    "note": "Kept our name; the map's name is a search alias (your choice)."
+  },
+  "w43331472": {
+    "aliases": [
+      "Facilities Garage/Warehouse"
+    ],
+    "note": "Kept our name; the map's name is a search alias (your choice)."
+  },
+  "w42825379": {
+    "aliases": [
+      "505 10th St NW"
+    ],
+    "note": "Kept our name; the map's name is a search alias (your choice)."
+  },
+  "w43331406": {
+    "aliases": [
+      "430 10th St (South)"
+    ],
+    "note": "Kept our name; the map's name is a search alias (your choice)."
+  },
+  "w42872634": {
+    "aliases": [
+      "ISyE Main"
+    ],
+    "note": "Kept our name; the map's name is a search alias (your choice)."
+  },
+  "r3178624_0": {
+    "aliases": [
+      "Howey Physics"
+    ]
+  },
+  "r3178624_1": {
+    "aliases": [
+      "Howey Physics"
+    ]
+  },
+  "w42872520": {
+    "aliases": [
+      "CRC Parking Deck"
+    ]
+  },
+  "w42872649": {
+    "aliases": [
+      "Love Manufacturing (MRDC II)",
+      "MRDC II"
+    ]
+  },
+  "w42872689": {
+    "aliases": [
+      "MRDC",
+      "MRDC I"
+    ]
+  },
+  "w367735715": {
+    "aliases": [
+      "Challenge Course & Pavilion"
+    ]
+  },
+  "w42706132": {
+    "aliases": [
+      "Blake R. Van Leer Building"
+    ]
+  },
+  "r302115": {
+    "aliases": [
+      "Skiles Classroom"
+    ]
+  },
+  "w42829998": {
+    "aliases": [
+      "East Architecture"
+    ]
+  },
+  "w179220688": {
+    "aliases": [
+      "West Architecture"
+    ]
+  },
+  "r3178622": {
+    "aliases": [
+      "Clough",
+      "CULC"
+    ]
+  },
+  "w42706716": {
+    "aliases": [
+      "Alumni/Faculty House"
+    ]
+  },
+  "r3178621": {
+    "aliases": [
+      "Post Office",
+      "Student Center"
+    ]
+  },
+  "w42831083": {
+    "aliases": [
+      "Guggenheim Aerospace Building"
+    ]
+  },
+  "r4578450": {
+    "aliases": [
+      "Hinman"
+    ]
+  },
+  "w42706834": {
+    "aliases": [
+      "College of Business"
+    ]
+  },
+  "w42706121": {
+    "aliases": [
+      "Cherry Emerson"
+    ]
+  },
+  "w42706130": {
+    "aliases": [
+      "Joyce K. & John A. Caddell"
+    ]
+  },
+  "w42706775": {
+    "aliases": [
+      "Gray House",
+      "Hayes House"
+    ]
+  }
+}

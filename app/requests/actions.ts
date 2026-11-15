@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
-import { PRIORITIES, PRIORITY_META, STATUSES, STATUS_META } from "@/lib/constants";
+import { PHOTO_BUCKET, PRIORITIES, PRIORITY_META, STATUSES, STATUS_META } from "@/lib/constants";
+import { canDeleteRequest, photoPathFromUrl } from "@/lib/permissions";
 import type { Priority, Status, User } from "@/lib/types";
 
 /**
@@ -189,4 +190,142 @@ export async function addNote(formData: FormData): Promise<ActionResult> {
   await db().from("requests").update({ updated_at: new Date().toISOString() }).eq("id", ticket.id);
   revalidateAll(ticket.id);
   return { ok: true, message: "Note added." };
+}
+
+/**
+ * Reporter: make their request public or private.
+ * Private → it leaves any shared issue group (a new group of its own), its "Me too" vote is removed,
+ * and the old group's title is refreshed if it was this request's. Public → the reporter counts again.
+ * Public requests are not re-grouped automatically; the AI only groups at submission.
+ */
+export async function setVisibility(id: number, visibility: "public" | "private"): Promise<ActionResult> {
+  const user = await requireUser(["reporter"]);
+  if (visibility !== "public" && visibility !== "private") return fail("Choose Public or Private.");
+  const { data: t } = await db()
+    .from("requests")
+    .select("id, title, category, building_id, group_id, reporter_id, status, visibility")
+    .eq("id", Number.isInteger(id) ? id : 0)
+    .maybeSingle<{ id: number; title: string; category: string; building_id: number; group_id: number; reporter_id: string; status: Status; visibility: string }>();
+  if (!t || t.reporter_id !== user.id) return fail("Request not found.");
+  if (t.visibility === visibility) return { ok: true, message: visibility === "private" ? "Already private." : "Already public." };
+
+  const sb = db();
+  if (visibility === "private") {
+    const { data: others } = await sb.from("requests").select("id, title, reporter_id, created_at").eq("group_id", t.group_id).neq("id", t.id).order("created_at");
+    let groupId = t.group_id;
+    if (others?.length) {
+      const { data: g, error } = await sb.from("issue_groups").insert({ building_id: t.building_id, category: t.category, title: t.title }).select("id").single();
+      if (error || !g) return fail(error?.message ?? "Could not update the request.");
+      groupId = g.id;
+      // The old group keeps its other reports; refresh its title if it came from this one.
+      const { data: old } = await sb.from("issue_groups").select("title").eq("id", t.group_id).single();
+      if (old?.title === t.title) await sb.from("issue_groups").update({ title: others[0].title }).eq("id", t.group_id);
+    }
+    const { error } = await sb.from("requests").update({ visibility, group_id: groupId, updated_at: new Date().toISOString() }).eq("id", t.id);
+    if (error) return fail(error.message);
+    // No "students affected" vote for private requests, unless they also reported another public one in the old group.
+    if (!others?.some((o) => o.reporter_id === user.id)) await sb.from("group_votes").delete().eq("group_id", t.group_id).eq("user_id", user.id);
+  } else {
+    const { error } = await sb.from("requests").update({ visibility, updated_at: new Date().toISOString() }).eq("id", t.id);
+    if (error) return fail(error.message);
+    await sb.from("group_votes").upsert({ group_id: t.group_id, user_id: user.id }, { onConflict: "group_id,user_id", ignoreDuplicates: true });
+  }
+  await sb.from("request_events").insert({ request_id: t.id, actor_id: user.id, from_status: t.status, to_status: t.status, note: visibility === "private" ? "Made private" : "Made public" });
+  revalidateAll(t.id);
+  revalidatePath("/issues");
+  revalidatePath("/report");
+  return { ok: true, message: visibility === "private" ? "Now private: only you and maintenance staff can see it." : "Now public: it shows in Active issues." };
+}
+
+/**
+ * Permanently delete a request (students: their own, before work starts; admins: any).
+ * One database transaction (delete_request in migration 002) removes the request, its history,
+ * and its issue-group membership (an emptied group goes with its votes), and writes a minimal
+ * audit row. Then the photo is removed from Storage and every page that lists requests is refreshed.
+ */
+export async function deleteRequest(id: number): Promise<ActionResult & { redirectTo?: string }> {
+  const user = await requireUser(["reporter", "admin"]);
+  if (!Number.isInteger(id) || id <= 0) return fail("Request not found.");
+  const { data: t } = await db().from("requests").select("id, status, reporter_id").eq("id", id).maybeSingle<{ id: number; status: Status; reporter_id: string }>();
+  if (!t) return fail("This request was already removed.");
+  if (!canDeleteRequest(user, t)) {
+    return fail(user.role === "reporter" && t.reporter_id === user.id ? "Work has already started on this request, so it can't be deleted." : "You can't delete this request.");
+  }
+
+  const { data, error } = await db().rpc("delete_request", { p_id: id, p_actor: user.id, p_role: user.role });
+  if (error) return fail(/delete_request/.test(error.message) ? "Deleting needs the latest database update (supabase/migrations/002_visibility_review_delete.sql)." : error.message);
+  const row = (Array.isArray(data) ? data[0] : data) as { photo_url: string | null } | undefined;
+  const path = photoPathFromUrl(row?.photo_url ?? null, PHOTO_BUCKET);
+  if (path) await db().storage.from(PHOTO_BUCKET).remove([path]);
+
+  revalidateAll(id);
+  revalidatePath("/issues");
+  revalidatePath("/report");
+  revalidatePath("/admin/analytics");
+  return { ok: true, message: `Request #${id} was deleted.`, redirectTo: user.role === "admin" ? "/admin" : "/my-requests" };
+}
+
+/**
+ * Smart Sort stacks: Claim / Start / Resolve / Assign every open report in an issue group at once.
+ * Each report goes through the same permission check and commit() as a single request, so each
+ * gets its own timeline event and each reporter sees the change in My requests.
+ * Reports another technician owns are left alone. Private requests are never in a shared group.
+ */
+export async function updateStack(formData: FormData): Promise<ActionResult> {
+  const user = await requireUser(["technician", "admin"]);
+  const groupId = Number(formData.get("group_id"));
+  const action = String(formData.get("action")) as TicketAction;
+  const note = String(formData.get("note") ?? "").trim().slice(0, 1000) || null;
+  if (!Number.isInteger(groupId) || groupId <= 0) return fail("Issue not found.");
+  if (!["claim", "start", "resolve", "assign"].includes(action)) return fail("Unknown action.");
+
+  const { data: rows } = await db()
+    .from("requests")
+    .select("id, status, priority, assignee_id, reporter_id")
+    .eq("group_id", groupId)
+    .eq("visibility", "public")
+    .neq("status", "resolved")
+    .order("created_at");
+  const tickets = (rows ?? []) as Ticket[];
+  if (!tickets.length) return fail("These reports were already resolved.");
+
+  let tech: { id: string; name: string } | null = null;
+  if (action === "assign") {
+    const { data } = await db().from("users").select("id, name").eq("id", String(formData.get("assignee_id") ?? "")).eq("role", "technician").maybeSingle();
+    if (!data) return fail("Choose a technician.");
+    tech = data;
+  }
+
+  const now = new Date().toISOString();
+  let done = 0;
+  let skipped = 0;
+  for (const t of tickets) {
+    if (checkAllowed(action, t, user)) {
+      skipped++;
+      continue;
+    }
+    let to: Status = t.status;
+    let patch: Record<string, unknown> = {};
+    let eventNote = note;
+    if (action === "claim") {
+      to = "assigned";
+      patch = { assignee_id: user.id };
+    } else if (action === "assign") {
+      to = t.status === "in_progress" ? "in_progress" : "assigned";
+      patch = { assignee_id: tech!.id };
+      eventNote = [`Assigned to ${tech!.name}`, note].filter(Boolean).join(" — ");
+    } else if (action === "start") {
+      to = "in_progress";
+    } else {
+      to = "resolved";
+      patch = { resolved_at: now };
+    }
+    const err = await commit(user, t, to, patch, eventNote);
+    if (err) skipped++;
+    else done++;
+  }
+  revalidatePath("/issues");
+  if (!done) return fail(skipped ? "Nothing here you can do that to. Another technician may have picked these up." : "Nothing to update.");
+  const verb = { claim: "Claimed", start: "Started", resolve: "Resolved", assign: "Assigned", reopen: "Reopened" }[action];
+  return { ok: true, message: `${verb} ${done} report${done === 1 ? "" : "s"}${skipped ? ` (${skipped} left for another technician)` : ""}.` };
 }

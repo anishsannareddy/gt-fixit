@@ -46,6 +46,8 @@ export function ReportMap({ buildings, issues }: { buildings: Building[]; issues
         <CampusCanvas
           mode="select"
           view="brand"
+          autoRotate
+          showReset={false}
           selected={selected?.osm_id ?? null}
           onSelect={(info) => {
             const b = byOsmId.get(info.id);

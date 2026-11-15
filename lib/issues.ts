@@ -33,6 +33,7 @@ async function loadOpen(filter: { buildingId?: number } = {}) {
     .from("requests")
     .select("id, group_id, title, description, location_detail, status, created_at, updated_at, reporter_id, building_id")
     .in("status", OPEN_STATUSES)
+    .eq("visibility", "public") // private requests never appear in Active issues
     .order("created_at", { ascending: true });
   if (filter.buildingId) q = q.eq("building_id", filter.buildingId);
   const { data, error } = await q;
@@ -90,6 +91,7 @@ export async function getIssueDetails(viewerId: string, groupIds: number[]): Pro
     .select("id, group_id, title, description, location_detail, status, created_at, reporter_id")
     .in("group_id", groupIds)
     .in("status", OPEN_STATUSES)
+    .eq("visibility", "public")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as unknown as OpenRow[];

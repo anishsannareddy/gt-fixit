@@ -12,6 +12,7 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { CATEGORIES, PHOTO_BUCKET, PRIORITIES } from "@/lib/constants";
 import type { Priority } from "@/lib/types";
+import { descriptionError, parseLocation, REPORTS_PER_HOUR, VISIBILITIES, type Visibility } from "@/lib/validation";
 
 /**
  * Step 1 of a photo upload: the server creates a one-time signed upload URL.
@@ -35,19 +36,30 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
   const buildingId = Number(get("building_id"));
   const title = get("title");
   const description = get("description");
-  const locationDetail = get("location_detail");
+  const location = parseLocation(get("location_kind"), get("room"), get("spot"));
   const category = get("category");
   const priority = get("priority") as Priority;
+  const visibility = (get("visibility") || "public") as Visibility;
   const photoPath = get("photo_path");
 
   const fieldErrors: Record<string, string> = {};
   if (!buildingId) fieldErrors.building_id = "Choose a building.";
+  if (!location.ok) fieldErrors[location.field] = location.error;
   if (title.length < 4) fieldErrors.title = "Add a short summary (at least 4 characters).";
   if (title.length > 120) fieldErrors.title = "Keep the summary under 120 characters.";
   if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) fieldErrors.category = "Pick a category.";
   if (!PRIORITIES.includes(priority)) fieldErrors.priority = "Pick a priority.";
-  if (description.length > 2000) fieldErrors.description = "Description is too long.";
-  if (Object.keys(fieldErrors).length) return { fieldErrors };
+  const descError = descriptionError(description);
+  if (descError) fieldErrors.description = descError;
+  if (!VISIBILITIES.includes(visibility)) fieldErrors.visibility = "Choose Public or Private.";
+  if (Object.keys(fieldErrors).length || !location.ok) return { fieldErrors };
+
+  // Light rate limit: a handful of reports per student per hour.
+  const since = new Date(Date.now() - 3_600_000).toISOString();
+  const { count: recent } = await db().from("requests").select("id", { count: "exact", head: true }).eq("reporter_id", user.id).gte("created_at", since);
+  if ((recent ?? 0) >= REPORTS_PER_HOUR) {
+    return { error: `You've sent ${REPORTS_PER_HOUR} reports in the last hour. Please wait a bit, or tap Me too on an existing issue.` };
+  }
 
   // Only accept photo paths our own upload flow could have produced.
   let photoUrl: string | null = null;
@@ -61,7 +73,8 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
   if (!building) return { fieldErrors: { building_id: "Choose a building." } };
 
   // Every request starts as its own issue group, with the reporter as the first "Me too" vote.
-  // The AI (run after the response, below) may merge it into an existing group.
+  // The AI (run after the response, below) may merge a public one into an existing group.
+  // A private request stays in its own group forever.
   const { data: group, error: groupError } = await db()
     .from("issue_groups")
     .insert({ building_id: buildingId, category, title })
@@ -77,7 +90,8 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
       description,
       building_id: buildingId,
       area: building.area,
-      location_detail: locationDetail.slice(0, 120),
+      location_detail: location.value,
+      visibility,
       category,
       priority,
       reporter_id: user.id,
@@ -89,7 +103,8 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
     await db().from("issue_groups").delete().eq("id", group.id);
     return { error: error?.message ?? "Could not save your request." };
   }
-  await db().from("group_votes").insert({ group_id: group.id, user_id: user.id });
+  // Private requests never count toward "students affected".
+  if (visibility === "public") await db().from("group_votes").insert({ group_id: group.id, user_id: user.id });
 
   await db().from("request_events").insert({
     request_id: data.id,

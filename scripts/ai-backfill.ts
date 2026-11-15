@@ -1,7 +1,10 @@
 /**
  * Runs the real AI triage over requests already in the database.
- *   npm run ai:backfill                  open requests: AI urgency, reason, category
- *   npm run ai:backfill -- --regroup     also merge duplicate reports (oldest first; only reports that are still their own group)
+ *   npm run ai:backfill                  open Urgent/High requests: AI review (urgency, reason, category).
+ *                                        Medium/Low are never sent to the AI here; they keep the reporter's
+ *                                        urgency (a hazard rule still escalates them, without the AI).
+ *   npm run ai:backfill -- --regroup     also merge duplicate public reports (oldest first; only reports that are
+ *                                        still their own group). This calls the AI for Medium/Low too, for grouping only.
  *   npm run ai:backfill -- --all         include resolved requests
  *   npm run ai:backfill -- --limit 20    only the first 20
  *   npm run ai:backfill -- --dry-run     call the AI and print results, change nothing
@@ -32,6 +35,8 @@ async function main() {
 
   let q = sb.from("requests").select("id, group_id, title").order("created_at", { ascending: true });
   if (!flag("--all")) q = q.neq("status", "resolved");
+  // Smart Sort reviews only what reporters marked Urgent or High.
+  if (!regroup) q = q.in("priority", ["urgent", "high"]);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   const rows = (data ?? []).slice(0, limit) as { id: number; group_id: number; title: string }[];
@@ -59,7 +64,7 @@ async function main() {
   const done = results.filter((r) => r.status === "done");
   const fell = results.filter((r) => r.status === "fallback");
   const disagree = done.filter((r) => r.urgency !== r.reporter);
-  console.log(`\n✓ ${done.length} rated, ${fell.length} fell back, ${disagree.length} where AI and reporter disagree, ${done.filter((r) => r.merged).length} merged into an existing issue`);
+  console.log(`\n✓ ${done.length} rated (${results.filter((r) => r.called).length} AI calls), ${fell.length} fell back, ${disagree.length} where AI and reporter disagree, ${done.filter((r) => r.merged).length} merged into an existing issue`);
   for (const r of disagree.slice(0, 15)) console.log(`  #${r.id} ${r.title}: reported ${r.reporter} → AI ${r.urgency}${r.merged ? ` (joins group ${r.merged})` : ""}`);
   if (fell.length) console.log(`  First fallback reason: ${fell[0].error}`);
 }

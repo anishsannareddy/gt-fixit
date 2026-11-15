@@ -1,6 +1,6 @@
 import type { TicketEvent, TicketWithRelations } from "@/lib/types";
 import { formatDateTime, formatHours, timeAgo } from "@/lib/format";
-import { AreaBadge, PriorityBadge, StatusBadge } from "@/components/ui/Badge";
+import { AreaBadge, PriorityBadge, PrivateBadge, StatusBadge } from "@/components/ui/Badge";
 import { StatusStepper } from "./StatusStepper";
 import { Timeline } from "./Timeline";
 
@@ -13,6 +13,7 @@ export function TicketDetail({ ticket, events, actions }: { ticket: TicketWithRe
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
+            {ticket.visibility === "private" && <PrivateBadge />}
           <AreaBadge area={ticket.area} />
           <span className="ml-auto font-mono text-sm text-ink-muted">#{ticket.id}</span>
         </div>

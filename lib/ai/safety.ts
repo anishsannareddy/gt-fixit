@@ -42,3 +42,26 @@ export function applySafety(p: {
   if (hazards.severe) urgency = maxUrgency(urgency, "high");
   return { urgency, safety, hazards: hazards.labels };
 }
+
+/** Reporter urgencies Smart Sort reviews with the AI. Medium and Low stay as reported. */
+export const REVIEWED_URGENCIES: readonly Priority[] = ["urgent", "high"];
+export const isReviewedUrgency = (p: Priority) => REVIEWED_URGENCIES.includes(p);
+
+/**
+ * Medium/Low requests keep the reporter's urgency, except a clear safety hazard escalates them:
+ * severe hazards (gas, fire/smoke, sparking, flooding, elevator entrapment) → Urgent, other hazards → High.
+ * `modelFlaggedHazard` (the AI's flag, when a grouping call ran) counts as a non-severe hazard.
+ */
+export function escalateForHazard(reporter: Priority, text: string, modelFlaggedHazard = false): { urgency: Priority; escalated: boolean; hazards: string[] } {
+  const h = detectHazards(text);
+  const any = h.labels.length > 0 || modelFlaggedHazard;
+  const target: Priority = h.severe ? "urgent" : any ? "high" : reporter;
+  const urgency = maxUrgency(reporter, target);
+  return { urgency, escalated: urgency !== reporter, hazards: h.labels };
+}
+
+/** Plain reason for an escalated Medium/Low request. */
+export function escalationReason(hazards: string[], urgency: Priority): string {
+  const what = hazards.length ? hazards.slice(0, 2).join(" and ") : "a possible safety hazard";
+  return `Escalated to ${urgency === "urgent" ? "Urgent" : "High"}: the report describes ${hazards.length ? `a ${what} risk` : what}.`;
+}

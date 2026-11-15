@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Priority } from "../types";
 import type { GenerateStructured } from "./provider";
+import { escalateForHazard, escalationReason, isReviewedUrgency } from "./safety";
 import { LIMITS, triage, type Candidate } from "./triage";
 
 export const RATE_LIMITS = { triage: 15, similar: 40 } as const; // per user per hour
@@ -33,6 +34,7 @@ export async function loadCandidates(sb: SupabaseClient, buildingId: number, opt
     .select("group_id, description, title, created_at, group:issue_groups(id, title, category)")
     .eq("building_id", buildingId)
     .in("status", OPEN)
+    .eq("visibility", "public") // private requests are never grouped
     .gte("created_at", since)
     .lt("created_at", before)
     .order("created_at", { ascending: false })
@@ -60,6 +62,38 @@ export async function mergeIntoGroup(sb: SupabaseClient, requestId: number, from
   }
   const { count } = await sb.from("requests").select("id", { count: "exact", head: true }).eq("group_id", fromGroupId);
   if (!count) await sb.from("issue_groups").delete().eq("id", fromGroupId);
+  await inheritGroupWork(sb, requestId, toGroupId);
+}
+
+const STEP: Record<string, number> = { submitted: 0, assigned: 1, in_progress: 2 };
+
+/**
+ * A new report that joins an issue someone is already handling takes on that technician and the
+ * most advanced status, so it doesn't sit alone in "Unassigned". Logged on its timeline.
+ */
+export async function inheritGroupWork(sb: SupabaseClient, requestId: number, groupId: number) {
+  const { data } = await sb.from("requests").select("id, status, assignee_id").eq("group_id", groupId).in("status", OPEN).not("assignee_id", "is", null);
+  const lead = ((data ?? []) as { id: number; status: string; assignee_id: string }[])
+    .filter((r) => r.id !== requestId)
+    .sort((a, b) => STEP[b.status] - STEP[a.status])[0];
+  if (!lead) return;
+  const { data: me } = await sb.from("requests").select("status").eq("id", requestId).maybeSingle();
+  if (me?.status !== "submitted") return;
+  const now = new Date().toISOString();
+  const { data: moved } = await sb
+    .from("requests")
+    .update({ assignee_id: lead.assignee_id, status: lead.status, updated_at: now })
+    .eq("id", requestId)
+    .eq("status", "submitted")
+    .select("id");
+  if (!moved?.length) return;
+  await sb.from("request_events").insert({
+    request_id: requestId,
+    actor_id: lead.assignee_id,
+    from_status: "submitted",
+    to_status: lead.status,
+    note: "Joined an issue a technician is already handling",
+  });
 }
 
 type Row = {
@@ -71,11 +105,22 @@ type Row = {
   priority: Priority;
   building_id: number;
   group_id: number;
+  visibility: "public" | "private";
   created_at: string;
   building: { name: string; type: string } | null;
 };
 
-export type RunResult = { status: "done" | "fallback"; urgency: Priority; reporter: Priority; merged: number | null; error?: string };
+export type RunResult = {
+  status: "done" | "fallback";
+  urgency: Priority;
+  reporter: Priority;
+  merged: number | null;
+  /** Smart Sort reviewed it: reported Urgent/High (AI review), or a Medium/Low hazard that was escalated. */
+  reviewed: boolean;
+  /** An AI call was made. */
+  called: boolean;
+  error?: string;
+};
 
 export async function runTriage(
   sb: SupabaseClient,
@@ -93,23 +138,53 @@ export async function runTriage(
 ): Promise<RunResult | null> {
   const { data } = await sb
     .from("requests")
-    .select("id, title, description, location_detail, category, priority, building_id, group_id, created_at, building:buildings(name, type)")
+    .select("id, title, description, location_detail, category, priority, building_id, group_id, visibility, created_at, building:buildings(name, type)")
     .eq("id", requestId)
     .maybeSingle();
   const req = data as unknown as Row | null;
   if (!req) return null;
 
   const saveFallback = async (error: string): Promise<RunResult> => {
-    if (!opts.dryRun) await sb.from("requests").update({ ai_status: "fallback", ai_at: new Date().toISOString() }).eq("id", req.id);
-    return { status: "fallback", urgency: req.priority, reporter: req.priority, merged: null, error };
+    if (!opts.dryRun) await sb.from("requests").update({ ai_status: "fallback", ai_reviewed: false, ai_at: new Date().toISOString() }).eq("id", req.id);
+    return { status: "fallback", urgency: req.priority, reporter: req.priority, merged: null, reviewed: false, called, error };
   };
 
-  if (opts.userId && !(await takeAiBudget(sb, opts.userId, "triage"))) return saveFallback("Rate limit reached");
+  // Smart Sort reviews only what the reporter called Urgent or High. Medium and Low keep the
+  // reporter's urgency unless the text describes a clear safety hazard (rules, no AI needed).
+  const reviewed = isReviewedUrgency(req.priority);
+  const text = `${req.title}. ${req.description}. ${req.location_detail}`;
+  let called = false;
+  const saveRules = async (modelFlaggedHazard = false, model = "rules", merged: number | null = null): Promise<RunResult> => {
+    const esc = escalateForHazard(req.priority, text, modelFlaggedHazard);
+    if (!opts.dryRun) {
+      await sb
+        .from("requests")
+        .update({
+          ai_urgency: esc.urgency,
+          ai_reason: esc.escalated ? escalationReason(esc.hazards, esc.urgency) : null,
+          ai_category: req.category,
+          ai_safety: esc.escalated,
+          ai_status: "done",
+          ai_model: model,
+          ai_reviewed: esc.escalated,
+          ai_at: new Date().toISOString(),
+        })
+        .eq("id", req.id);
+    }
+    return { status: "done", urgency: esc.urgency, reporter: req.priority, merged, reviewed: esc.escalated, called };
+  };
 
-  const group = opts.group !== false;
+  // Private requests are never grouped with others.
+  const group = opts.group !== false && req.visibility !== "private";
+  // Medium/Low with nothing to group: no AI call at all.
+  if (!reviewed && !group) return saveRules();
   const candidates = group ? await loadCandidates(sb, req.building_id, { excludeGroupId: req.group_id, before: opts.chronological ? req.created_at : undefined }) : [];
+  // Medium/Low are only sent to the AI to find duplicates; nothing to compare against → rules only.
+  if (!reviewed && !candidates.length) return saveRules();
+  if (opts.userId && !(await takeAiBudget(sb, opts.userId, "triage"))) return reviewed ? saveFallback("Rate limit reached") : saveRules();
   const { count: votes } = await sb.from("group_votes").select("user_id", { count: "exact", head: true }).eq("group_id", req.group_id);
 
+  called = true;
   const out = await triage(
     {
       title: req.title,
@@ -123,14 +198,24 @@ export async function runTriage(
     },
     generate,
   );
-  if (!out.ok) return saveFallback(out.error);
-  if (opts.dryRun) return { status: "done", urgency: out.urgency, reporter: req.priority, merged: out.matchGroupId };
+  if (!out.ok) return reviewed ? saveFallback(out.error) : saveRules();
+  const merged = group ? out.matchGroupId : null;
+  if (opts.dryRun) {
+    if (!reviewed) return saveRules(out.safety, out.model, merged);
+    return { status: "done", urgency: out.urgency, reporter: req.priority, merged, reviewed: true, called };
+  }
 
   const now = new Date().toISOString();
-  await sb
-    .from("requests")
-    .update({ ai_urgency: out.urgency, ai_reason: out.reason, ai_category: out.category, ai_safety: out.safety, ai_status: "done", ai_model: out.model, ai_at: now })
-    .eq("id", req.id);
+  let result: RunResult;
+  if (reviewed) {
+    await sb
+      .from("requests")
+      .update({ ai_urgency: out.urgency, ai_reason: out.reason, ai_category: out.category, ai_safety: out.safety, ai_status: "done", ai_model: out.model, ai_reviewed: true, ai_at: now })
+      .eq("id", req.id);
+    result = { status: "done", urgency: out.urgency, reporter: req.priority, merged, reviewed: true, called };
+  } else {
+    result = await saveRules(out.safety, out.model, merged);
+  }
 
   if (group && out.matchGroupId) {
     await mergeIntoGroup(sb, req.id, req.group_id, out.matchGroupId);
@@ -140,5 +225,5 @@ export async function runTriage(
     const { count } = await sb.from("requests").select("id", { count: "exact", head: true }).eq("group_id", req.group_id);
     if ((count ?? 0) <= 1) await sb.from("issue_groups").update({ title: out.groupTitle }).eq("id", req.group_id);
   }
-  return { status: "done", urgency: out.urgency, reporter: req.priority, merged: group ? out.matchGroupId : null };
+  return result;
 }

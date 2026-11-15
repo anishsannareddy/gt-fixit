@@ -9,6 +9,8 @@ export type Building = {
   id: number;
   name: string;
   short_name: string | null;
+  /** Other names people search for (old names, map labels). */
+  aliases: string[];
   type: BuildingType;
   /** GT building number, when known. */
   number: string | null;
@@ -49,6 +51,8 @@ export type Ticket = {
   photo_url: string | null;
   /** Issue group (duplicate reports of one problem share a group). */
   group_id: number;
+  /** 'private': only the reporter and staff see it; never grouped or listed in Active issues. */
+  visibility: "public" | "private";
   /** AI suggestion, set once at submission. Never replaces the reporter's `priority`. */
   ai_urgency: Priority | null;
   ai_reason: string | null;
@@ -57,6 +61,8 @@ export type Ticket = {
   ai_status: AiStatus;
   ai_model: string | null;
   ai_at: string | null;
+  /** Smart Sort reviewed the urgency (reported Urgent/High, or a Medium/Low hazard that was escalated). */
+  ai_reviewed: boolean;
   /** Technician's accepted/overridden urgency. */
   triage_urgency: Priority | null;
   triage_by: string | null;

@@ -1,3 +1,4 @@
+import { LockIcon } from "./Icons";
 import { AREA_META, type Zone } from "@/lib/campus/areas";
 import type { Priority, Status } from "@/lib/types";
 import { cn } from "./cn";
@@ -54,6 +55,15 @@ export function AreaBadge({ area, className }: { area: Zone; className?: string 
     <span className={cn(PILL, "bg-white text-ink ring-slate-300", className)}>
       <span className="size-2 rounded-full ring-1 ring-slate-300" style={{ background: AREA_META[area].color }} aria-hidden="true" />
       {AREA_META[area].label}
+    </span>
+  );
+}
+
+/** Shown on private requests (only the reporter and staff can see them). */
+export function PrivateBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300">
+      <LockIcon className="size-3" /> Private
     </span>
   );
 }

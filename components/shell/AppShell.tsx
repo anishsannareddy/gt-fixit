@@ -23,13 +23,8 @@ function CampusShell({ user, children }: { user: User; children: ReactNode }) {
             <Logo />
           </Link>
           <TopNav role={user.role} />
-          <div className="ml-auto">
-            <UserMenu
-              name={user.name}
-              email={user.email}
-              role={ROLE_META[user.role].label}
-              smartSort={user.role === "technician" ? Boolean(user.smart_sort) : undefined}
-            />
+          <div className="ml-auto min-w-0">
+            <UserMenu name={user.name} email={user.email} role={ROLE_META[user.role].label} />
           </div>
         </div>
       </header>
@@ -50,8 +45,8 @@ function AdminShell({ user, children }: { user: User; children: ReactNode }) {
         </Link>
         <p className="mt-6 mb-2 px-3 font-mono text-[0.65rem] tracking-[0.25em] text-signal uppercase">Operations</p>
         <RailNav role="admin" />
-        <div className="mt-auto rounded-2xl border border-line bg-page p-2">
-          <UserMenu name={user.name} email={user.email} role={user.title ?? "Admin"} align="up" tone="command" smartSort={Boolean(user.smart_sort)} />
+        <div className="mt-auto min-w-0 rounded-2xl border border-line bg-page p-2">
+          <UserMenu name={user.name} email={user.email} role={user.title ?? "Admin"} align="up" tone="command" className="w-full" />
         </div>
       </aside>
 
@@ -61,8 +56,8 @@ function AdminShell({ user, children }: { user: User; children: ReactNode }) {
           <Logo />
         </Link>
         <span className="rounded-md border border-signal/30 bg-signal/10 px-1.5 py-0.5 font-mono text-[0.6rem] tracking-widest text-signal uppercase">Admin</span>
-        <div className="ml-auto">
-          <UserMenu name={user.name} email={user.email} role="Admin" tone="command" smartSort={Boolean(user.smart_sort)} />
+        <div className="ml-auto min-w-0">
+          <UserMenu name={user.name} email={user.email} role={user.title ?? "Admin"} tone="command" />
         </div>
       </header>
 
