@@ -8,6 +8,7 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { ArrowLeftIcon } from "@/components/ui/Icons";
 import { PageContainer } from "@/components/ui/Surface";
 import { TicketActions } from "@/components/tickets/TicketActions";
+import { AiTriagePanel } from "@/components/tickets/AiUrgency";
 import { TicketDetail } from "@/components/tickets/TicketDetail";
 
 export async function generateMetadata(props: PageProps<"/requests/[id]">): Promise<Metadata> {
@@ -45,11 +46,16 @@ export default async function RequestDetailPage(props: PageProps<"/requests/[id]
         ticket={ticket}
         events={events}
         actions={
-          <TicketActions
-            ticket={ticket}
-            viewer={{ id: user.id, role: user.role }}
-            technicians={technicians.map((t) => ({ id: t.id, name: t.name }))}
-          />
+          <>
+            {user.role !== "reporter" && ticket.status !== "resolved" && (
+              <AiTriagePanel t={ticket} viewerId={user.id} canEdit={user.role === "admin" || !ticket.assignee_id || ticket.assignee_id === user.id} />
+            )}
+            <TicketActions
+              ticket={ticket}
+              viewer={{ id: user.id, role: user.role }}
+              technicians={technicians.map((t) => ({ id: t.id, name: t.name }))}
+            />
+          </>
         }
       />
     </PageContainer>

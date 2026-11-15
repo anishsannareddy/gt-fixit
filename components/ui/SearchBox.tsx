@@ -5,7 +5,7 @@ import { useState } from "react";
 import { SearchIcon, XIcon } from "@/components/ui/Icons";
 
 /** Search requests by title, building or ticket number. Submits on Enter; updates ?q=. */
-export function SearchBox() {
+export function SearchBox({ label = "Search requests", placeholder = "Search title, building or #id" }: { label?: string; placeholder?: string } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -33,8 +33,8 @@ export function SearchBox() {
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Search title, building or #id"
-        aria-label="Search requests"
+        placeholder={placeholder}
+        aria-label={label}
         className="min-h-11 w-full rounded-xl border border-field/60 bg-white pr-9 pl-9 text-sm outline-none placeholder:text-slate-500 focus:border-gt-navy focus:ring-3 focus:ring-gt-gold/45"
       />
       {value && (

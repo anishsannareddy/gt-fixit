@@ -5,6 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
  *   npm run test:e2e
  * Runs against a production build on port 3123, using the demo accounts from `npm run seed`
  * and your Supabase project from .env.local. Tests create their own requests and delete them afterwards.
+ * AI is turned off (AI_PROVIDER=off): tests never call OpenAI, and they check the no-AI fallback path.
  */
 const PORT = 3123;
 
@@ -23,5 +24,11 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: `npm run build && npx next start -p ${PORT}`, port: PORT, timeout: 240_000, reuseExistingServer: true },
+    : {
+        command: `npm run build && npx next start -p ${PORT}`,
+        port: PORT,
+        timeout: 240_000,
+        reuseExistingServer: true,
+        env: { AI_PROVIDER: "off" },
+      },
 });

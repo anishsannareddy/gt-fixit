@@ -75,7 +75,7 @@ test("admin filters by building, opens the drawer, and manages a request; the te
   const drawer = page.getByRole("dialog");
   await expect(drawer.getByRole("heading", { name: title }).first()).toBeVisible();
 
-  await drawer.getByText("High", { exact: true }).click();
+  await drawer.getByRole("group", { name: "Priority" }).getByText("High", { exact: true }).click();
   await drawer.getByRole("button", { name: "Save priority" }).click();
   await expectToast(page, "Priority set to High.");
 

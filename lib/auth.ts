@@ -14,7 +14,7 @@ import type { Role, User } from "./types";
 
 export const GT_EMAIL = /^[a-z0-9][a-z0-9._+-]{0,63}@gatech\.edu$/i;
 
-const PROFILE_COLUMNS = "id, name, role, title, email, is_demo";
+const PROFILE_COLUMNS = "id, name, role, title, email, is_demo, smart_sort";
 
 /** Load the profile for an auth user. A @gatech.edu account with no profile yet becomes a student. */
 export async function loadProfile(authId: string, email: string | undefined, name?: string): Promise<User | null> {

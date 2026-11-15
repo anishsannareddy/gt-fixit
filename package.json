@@ -11,7 +11,9 @@
     "typecheck": "next typegen && tsc --noEmit",
     "check:contrast": "tsx scripts/check-contrast.ts",
     "test:e2e": "playwright test",
-    "check:coverage": "tsx scripts/check-coverage.ts"
+    "check:coverage": "tsx scripts/check-coverage.ts",
+    "ai:backfill": "tsx scripts/ai-backfill.ts",
+    "test:unit": "tsx --test lib/ai/*.test.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -21,11 +23,13 @@
     "browser-image-compression": "^2.0.2",
     "motion": "^14.14.0",
     "next": "16.4.6",
+    "openai": "^7.57.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
-    "three": "^0.187.0"
+    "three": "^0.187.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
@@ -40,5 +44,8 @@
     "tailwindcss": "4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

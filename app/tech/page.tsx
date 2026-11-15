@@ -15,6 +15,9 @@ import { FadeIn } from "@/components/ui/Motion";
 import { PageContainer, PageHeader } from "@/components/ui/Surface";
 import { TicketCard } from "@/components/tickets/TicketCard";
 import { TechCardAction } from "./TechCardAction";
+import { AiUrgency } from "@/components/tickets/AiUrgency";
+import { SparkleIcon } from "@/components/ui/Icons";
+import { aiDisagrees, smartSort } from "@/lib/urgency";
 
 export const metadata: Metadata = { title: "My queue" };
 
@@ -39,9 +42,21 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
   ]);
   if (openRes.error) throw new Error(openRes.error.message);
   if (resolvedRes.error) throw new Error(resolvedRes.error.message);
-  const open = (openRes.data ?? []) as TicketWithRelations[];
-  // Urgent first, then oldest first
-  open.sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.created_at.localeCompare(b.created_at));
+  let open = (openRes.data ?? []) as TicketWithRelations[];
+  // Students affected per issue group (each reporter + "Me too" votes)
+  const groupIds = [...new Set(open.map((t) => t.group_id))];
+  const { data: votes } = groupIds.length ? await db().from("group_votes").select("group_id").in("group_id", groupIds) : { data: [] };
+  const affectedBy = new Map<number, number>();
+  for (const v of votes ?? []) affectedBy.set(v.group_id, (affectedBy.get(v.group_id) ?? 0) + 1);
+  const affected = (t: TicketWithRelations) => affectedBy.get(t.group_id) ?? 1;
+  const smart = Boolean(user.smart_sort);
+  if (smart) {
+    // Smart Sort: AI urgency (or the technician's choice), then students affected, then oldest
+    open = smartSort(open, affected);
+  } else {
+    // Urgent first (reporter's urgency), then oldest first
+    open.sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.created_at.localeCompare(b.created_at));
+  }
 
   const byTab: Record<Tab, TicketWithRelations[]> = {
     mine: open.filter((t) => t.assignee_id === user.id),
@@ -72,6 +87,11 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
         subtitle={`${byTab.mine.length} assigned to you · ${byTab.unassigned.length} waiting for a technician${urgentWaiting ? ` · ${urgentWaiting} urgent` : ""}`}
       />
 
+      {smart && (
+        <p className="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-ink ring-1 ring-gt-gold/60" data-testid="smart-sort-on">
+          <SparkleIcon className="size-3.5" /> Smart Sort on: AI urgency, then students affected, then oldest. Turn it off in your account menu.
+        </p>
+      )}
       <ChipRow label="Queue views">
         {TABS.filter((t) => user.role === "technician" || t.key !== "mine").map((t) => (
           <Chip key={t.key} href={tabHref(t.key)} active={tab === t.key} count={t.key === "resolved" ? undefined : byTab[t.key].length}>
@@ -93,7 +113,7 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
         </div>
       </Suspense>
 
-      <div className="mt-5 grid gap-3 lg:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {shown.length === 0 ? (
           <div className="lg:col-span-2">
             <EmptyState
@@ -105,11 +125,22 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
           </div>
         ) : (
           shown.map((t, i) => (
-            <FadeIn key={t.id} index={i}>
+            <FadeIn key={`${t.id}-${t.triage_urgency}`} index={i}>
               <TicketCard
                 ticket={t}
                 showReporter
                 showAssignee={tab !== "mine"}
+                highlight={smart && t.status !== "resolved" && aiDisagrees(t) && !t.triage_urgency}
+                aside={
+                  smart && t.status !== "resolved" ? (
+                    <AiUrgency
+                      t={t}
+                      viewerId={user.id}
+                      canEdit={user.role === "admin" || !t.assignee_id || t.assignee_id === user.id}
+                      affected={affected(t)}
+                    />
+                  ) : undefined
+                }
                 footer={
                   // Technicians get a one-tap next step; admins manage requests from the Command Center drawer.
                   user.role === "technician" && (t.status === "submitted" || (t.assignee_id === user.id && t.status !== "resolved")) ? (

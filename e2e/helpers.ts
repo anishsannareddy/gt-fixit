@@ -7,6 +7,7 @@ config({ path: ".env.local", quiet: true });
 export const PASSWORD = process.env.DEMO_ACCOUNT_PASSWORD || "GTFixIt-Demo-2026!";
 export const ACCOUNTS = {
   student: "demo.student@gatech.edu",
+  faculty: "demo.faculty@gatech.edu",
   tech: "demo.tech@gatech.edu",
   admin: "demo.admin@gatech.edu",
 } as const;
@@ -38,6 +39,10 @@ export async function reportIssue(page: Page, title: string): Promise<number> {
   await page.getByRole("option").first().click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toBeVisible();
+  // Buildings with active issues list them first; go on to a new report.
+  const newReport = page.getByRole("button", { name: "Report a new issue" });
+  await expect(newReport.or(sheet.locator("#location_detail"))).toBeVisible();
+  if (await newReport.isVisible()) await newReport.click();
   await sheet.locator("#location_detail").fill("Room 1447");
   await sheet.getByText("Plumbing", { exact: true }).click();
   await sheet.locator("#title").fill(title);
@@ -49,6 +54,14 @@ export async function reportIssue(page: Page, title: string): Promise<number> {
   return id;
 }
 
+/** Delete test requests, then any issue group they leave empty. */
 export async function deleteRequests(ids: number[]) {
-  if (ids.length) await admin().from("requests").delete().in("id", ids);
+  if (!ids.length) return;
+  const sb = admin();
+  const { data } = await sb.from("requests").select("group_id").in("id", ids);
+  await sb.from("requests").delete().in("id", ids);
+  for (const gid of new Set((data ?? []).map((r) => r.group_id as number))) {
+    const { count } = await sb.from("requests").select("id", { count: "exact", head: true }).eq("group_id", gid);
+    if (!count) await sb.from("issue_groups").delete().eq("id", gid);
+  }
 }

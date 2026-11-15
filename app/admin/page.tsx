@@ -17,9 +17,10 @@ import { FilterSelect } from "@/components/ui/FilterSelect";
 import { ChartIcon, XIcon } from "@/components/ui/Icons";
 import { PageContainer, PageHeader } from "@/components/ui/Surface";
 import { TicketActions } from "@/components/tickets/TicketActions";
+import { AiTriagePanel } from "@/components/tickets/AiUrgency";
 import { TicketDetail } from "@/components/tickets/TicketDetail";
 import { AdminDrawer } from "./AdminDrawer";
-import { SearchBox } from "./SearchBox";
+import { SearchBox } from "@/components/ui/SearchBox";
 
 export const metadata: Metadata = { title: "Command Center" };
 
@@ -206,7 +207,12 @@ export default async function CommandCenter(props: PageProps<"/admin">) {
             <TicketDetail
               ticket={drawerTicket}
               events={drawerEvents}
-              actions={<TicketActions ticket={drawerTicket} viewer={{ id: user.id, role: user.role }} technicians={technicians.map((t) => ({ id: t.id, name: t.name }))} />}
+              actions={
+                <>
+                  {drawerTicket.status !== "resolved" && <AiTriagePanel key={drawerTicket.id} t={drawerTicket} viewerId={user.id} canEdit />}
+                  <TicketActions ticket={drawerTicket} viewer={{ id: user.id, role: user.role }} technicians={technicians.map((t) => ({ id: t.id, name: t.name }))} />
+                </>
+              }
             />
             <Link href={`/requests/${drawerTicket.id}`} className="mt-4 inline-block text-sm font-semibold text-ink underline decoration-gt-gold decoration-2 underline-offset-4">
               Open full page

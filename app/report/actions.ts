@@ -2,6 +2,12 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { runTriageForRequest } from "@/lib/ai/service";
+import { aiEnabled, generateStructured } from "@/lib/ai/provider";
+import { takeAiBudget } from "@/lib/ai/run";
+import { findSimilar, wordOverlap } from "@/lib/ai/triage";
+import { getActiveIssues, type ActiveIssue } from "@/lib/issues";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { CATEGORIES, PHOTO_BUCKET, PRIORITIES } from "@/lib/constants";
@@ -54,9 +60,19 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
   const { data: building } = await db().from("buildings").select("area").eq("id", buildingId).maybeSingle();
   if (!building) return { fieldErrors: { building_id: "Choose a building." } };
 
+  // Every request starts as its own issue group, with the reporter as the first "Me too" vote.
+  // The AI (run after the response, below) may merge it into an existing group.
+  const { data: group, error: groupError } = await db()
+    .from("issue_groups")
+    .insert({ building_id: buildingId, category, title })
+    .select("id")
+    .single();
+  if (groupError || !group) return { error: groupError?.message ?? "Could not save your request." };
+
   const { data, error } = await db()
     .from("requests")
     .insert({
+      group_id: group.id,
       title,
       description,
       building_id: buildingId,
@@ -69,7 +85,11 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
     })
     .select("id")
     .single();
-  if (error || !data) return { error: error?.message ?? "Could not save your request." };
+  if (error || !data) {
+    await db().from("issue_groups").delete().eq("id", group.id);
+    return { error: error?.message ?? "Could not save your request." };
+  }
+  await db().from("group_votes").insert({ group_id: group.id, user_id: user.id });
 
   await db().from("request_events").insert({
     request_id: data.id,
@@ -81,6 +101,41 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
   revalidatePath("/my-requests");
   revalidatePath("/tech");
   revalidatePath("/admin", "layout");
+  revalidatePath("/issues");
+  // AI triage runs once, after the response is sent, so submitting never waits on (or fails because of) the AI.
+  const requestId = data.id as number;
+  after(() => runTriageForRequest(requestId, user.id));
   // The report sheet shows a success screen with a link to the new request.
   return { created: { id: data.id } };
+}
+
+/**
+ * Report form: active issues in this building that look like the draft, so the student can tap
+ * "Me too" instead of filing a duplicate. Uses the AI when available (rate limited), otherwise
+ * simple word overlap. Never blocks reporting: any failure just returns no suggestions.
+ */
+export async function findSimilarIssues(buildingId: number, title: string, description: string): Promise<ActiveIssue[]> {
+  const user = await requireUser(["reporter"]);
+  if (!Number.isInteger(buildingId) || buildingId <= 0) return [];
+  const draft = `${title.slice(0, 120)} ${description.slice(0, 2000)}`.trim();
+  if (draft.length < 8) return [];
+  try {
+    const issues = await getActiveIssues(user.id, { buildingId });
+    if (!issues.length) return [];
+    const candidates = issues.map((i) => ({ id: i.id, title: i.title, category: i.category, reports: i.reports, sample: i.title }));
+
+    let ids: number[] | null = null;
+    if (aiEnabled() && (await takeAiBudget(db(), user.id, "similar"))) {
+      const { data: b } = await db().from("buildings").select("name").eq("id", buildingId).maybeSingle();
+      const res = await findSimilar({ title, description, building: b?.name ?? "" }, candidates, generateStructured);
+      if (res.ok) ids = res.ids;
+    }
+    ids ??= issues.filter((i) => wordOverlap(draft, `${i.title} ${i.category}`) >= 0.5).map((i) => i.id);
+    return ids
+      .map((id) => issues.find((i) => i.id === id))
+      .filter((i): i is ActiveIssue => Boolean(i))
+      .slice(0, 3);
+  } catch {
+    return [];
+  }
 }

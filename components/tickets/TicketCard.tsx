@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { TicketWithRelations } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { AreaBadge, PriorityBadge, StatusBadge } from "@/components/ui/Badge";
+import { cn } from "@/components/ui/cn";
 import { ChevronRightIcon, PinIcon } from "@/components/ui/Icons";
 import { StatusStepper } from "./StatusStepper";
 
@@ -13,6 +14,8 @@ export function TicketCard({
   showReporter = false,
   showAssignee = false,
   stepper = false,
+  aside,
+  highlight = false,
   footer,
 }: {
   ticket: TicketWithRelations;
@@ -20,11 +23,15 @@ export function TicketCard({
   showReporter?: boolean;
   showAssignee?: boolean;
   stepper?: boolean;
+  /** Interactive row under the summary (e.g. the Smart Sort AI badge). Kept outside the link. */
+  aside?: ReactNode;
+  /** Draw attention to the card (e.g. AI and reporter disagree). Paired with a text label in `aside`. */
+  highlight?: boolean;
   /** Actions shown under the card (e.g. a big Claim / Start / Resolve button). */
   footer?: ReactNode;
 }) {
   return (
-    <article className="overflow-hidden rounded-3xl border border-line bg-white shadow-sm transition hover:shadow-panel">
+    <article className={cn("overflow-hidden rounded-3xl border border-line bg-white shadow-sm transition hover:shadow-panel", highlight && "border-l-4 border-l-gt-gold")}>
       <Link href={href} className="flex gap-3 p-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gt-navy">
         {ticket.photo_url && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -56,6 +63,7 @@ export function TicketCard({
         </div>
         <ChevronRightIcon className="size-5 shrink-0 self-center text-ink-muted" />
       </Link>
+      {aside && <div className="px-4 pb-3">{aside}</div>}
       {footer && <div className="border-t border-line bg-page/60 p-3">{footer}</div>}
     </article>
   );

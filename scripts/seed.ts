@@ -83,62 +83,64 @@ function campusRows() {
   });
 }
 
-type Seed = { title: string; desc: string; priority: [string, number][] };
+type U = "low" | "medium" | "high" | "urgent";
+/** One kind of issue. `ai` is the pre-baked AI rating, so the demo works without the OpenAI API. */
+type Seed = { title: string; desc: string; priority: [string, number][]; ai: [U, string, boolean?] };
 const ISSUES: Record<string, Seed[]> = {
   Plumbing: [
-    { title: "Leaking sink faucet", desc: "Faucet drips constantly even when fully closed.", priority: [["low", 3], ["medium", 5]] },
-    { title: "Clogged shower drain", desc: "Water pools ankle-deep during showers and drains very slowly.", priority: [["medium", 6], ["high", 3]] },
-    { title: "Toilet running nonstop", desc: "Toilet keeps running after flushing; you can hear it all night.", priority: [["medium", 6], ["low", 2]] },
-    { title: "Water leaking from ceiling", desc: "Water dripping from a ceiling tile, bucket placed underneath.", priority: [["urgent", 5], ["high", 4]] },
-    { title: "No hot water", desc: "Only cold water from all taps since this morning.", priority: [["high", 6], ["urgent", 2]] },
+    { title: "Leaking sink faucet", desc: "Faucet drips constantly even when fully closed.", priority: [["low", 3], ["medium", 5]], ai: ["low", "A dripping faucet wastes water but causes no damage or risk."] },
+    { title: "Clogged shower drain", desc: "Water pools ankle-deep during showers and drains very slowly.", priority: [["medium", 6], ["high", 3]], ai: ["medium", "Slow drain disrupts daily use but water stays in the shower."] },
+    { title: "Toilet running nonstop", desc: "Toilet keeps running after flushing; you can hear it all night.", priority: [["medium", 6], ["low", 2]], ai: ["medium", "Wastes water continuously; a quick fix but not a risk."] },
+    { title: "Water leaking from ceiling", desc: "Water dripping from a ceiling tile, bucket placed underneath.", priority: [["urgent", 5], ["high", 4]], ai: ["high", "An active ceiling leak can spread damage and make floors slippery.", true] },
+    { title: "No hot water", desc: "Only cold water from all taps since this morning.", priority: [["high", 6], ["urgent", 2]], ai: ["high", "No hot water affects everyone in the room or floor until fixed."] },
   ],
   Electrical: [
-    { title: "Outlet not working", desc: "Wall outlet by the desk has no power; tried multiple devices.", priority: [["medium", 6], ["low", 2]] },
-    { title: "Outlet sparking", desc: "Saw sparks when plugging in a charger. Stopped using it.", priority: [["urgent", 7]] },
-    { title: "Breaker keeps tripping", desc: "Breaker trips whenever the microwave and a laptop are on.", priority: [["high", 5], ["medium", 3]] },
+    { title: "Outlet not working", desc: "Wall outlet by the desk has no power; tried multiple devices.", priority: [["medium", 6], ["low", 2]], ai: ["low", "A dead outlet with no sparks or heat is an inconvenience."] },
+    { title: "Outlet sparking", desc: "Saw sparks when plugging in a charger. Stopped using it.", priority: [["urgent", 7]], ai: ["urgent", "Sparking outlets are a fire and shock risk.", true] },
+    { title: "Breaker keeps tripping", desc: "Breaker trips whenever the microwave and a laptop are on.", priority: [["high", 5], ["medium", 3]], ai: ["medium", "Likely an overloaded circuit; the breaker is doing its job."] },
   ],
   "HVAC / Temperature": [
-    { title: "AC not cooling", desc: "Thermostat set to 68 but the room is over 80°F.", priority: [["high", 6], ["urgent", 2]] },
-    { title: "Room too cold / heat not working", desc: "Heater blows cold air; room is around 60°F.", priority: [["high", 5], ["medium", 3]] },
-    { title: "Loud rattling from vent", desc: "Air vent makes a loud rattle every few minutes.", priority: [["low", 4], ["medium", 4]] },
-    { title: "Thermostat unresponsive", desc: "Thermostat screen is blank and buttons do nothing.", priority: [["medium", 6]] },
+    { title: "AC not cooling", desc: "Thermostat set to 68 but the room is over 80°F.", priority: [["high", 6], ["urgent", 2]], ai: ["high", "Over 80°F indoors makes the room hard to live or work in."] },
+    { title: "Room too cold / heat not working", desc: "Heater blows cold air; room is around 60°F.", priority: [["high", 5], ["medium", 3]], ai: ["high", "A 60°F room is uncomfortable and affects sleep and study."] },
+    { title: "Loud rattling from vent", desc: "Air vent makes a loud rattle every few minutes.", priority: [["low", 4], ["medium", 4]], ai: ["low", "Annoying noise with no sign of a failure or risk."] },
+    { title: "Thermostat unresponsive", desc: "Thermostat screen is blank and buttons do nothing.", priority: [["medium", 6]], ai: ["medium", "Temperature can't be adjusted, but the room isn't extreme yet."] },
   ],
   Elevator: [
-    { title: "Elevator out of service", desc: "Elevator doors won't open on any floor.", priority: [["high", 6], ["urgent", 3]] },
-    { title: "Elevator stopping between floors", desc: "Elevator jolts and pauses between floors.", priority: [["urgent", 5], ["high", 3]] },
+    { title: "Elevator out of service", desc: "Elevator doors won't open on any floor.", priority: [["high", 6], ["urgent", 3]], ai: ["high", "No elevator blocks access for anyone who can't use stairs.", true] },
+    { title: "Elevator stopping between floors", desc: "Elevator jolts and pauses between floors.", priority: [["urgent", 5], ["high", 3]], ai: ["urgent", "An elevator stalling between floors risks trapping riders.", true] },
   ],
   Lighting: [
-    { title: "Hallway lights out", desc: "Several hallway lights are out; it's dark at night.", priority: [["medium", 5], ["high", 2]] },
-    { title: "Flickering classroom lights", desc: "Overhead lights flicker constantly during lecture.", priority: [["medium", 5], ["low", 3]] },
-    { title: "Exterior light out by entrance", desc: "Light over the main entrance is out — feels unsafe after dark.", priority: [["high", 5], ["medium", 2]] },
+    { title: "Hallway lights out", desc: "Several hallway lights are out; it's dark at night.", priority: [["medium", 5], ["high", 2]], ai: ["medium", "Dark hallways are a trip risk at night but there is other light."] },
+    { title: "Flickering classroom lights", desc: "Overhead lights flicker constantly during lecture.", priority: [["medium", 5], ["low", 3]], ai: ["low", "Distracting, but the room is still usable."] },
+    { title: "Exterior light out by entrance", desc: "Light over the main entrance is out — feels unsafe after dark.", priority: [["high", 5], ["medium", 2]], ai: ["high", "A dark entrance is a personal-safety concern at night.", true] },
   ],
   "Doors & Locks": [
-    { title: "Card reader not working", desc: "BuzzCard reader flashes red for every card.", priority: [["high", 6], ["urgent", 2]] },
-    { title: "Door won't latch", desc: "Door doesn't close all the way, so it can't lock.", priority: [["high", 5], ["medium", 3]] },
-    { title: "Lock is jammed", desc: "Key turns but the lock doesn't open.", priority: [["high", 4], ["urgent", 2]] },
+    { title: "Card reader not working", desc: "BuzzCard reader flashes red for every card.", priority: [["high", 6], ["urgent", 2]], ai: ["high", "Residents can't get in, and doors may get propped open.", true] },
+    { title: "Door won't latch", desc: "Door doesn't close all the way, so it can't lock.", priority: [["high", 5], ["medium", 3]], ai: ["high", "A door that can't lock is a security issue.", true] },
+    { title: "Lock is jammed", desc: "Key turns but the lock doesn't open.", priority: [["high", 4], ["urgent", 2]], ai: ["high", "Someone is locked out of their space until it's fixed.", true] },
   ],
   Furniture: [
-    { title: "Broken desk chair", desc: "Chair base is cracked and it tips backward.", priority: [["low", 5], ["medium", 3]] },
-    { title: "Bed frame slats broken", desc: "Two slats snapped; mattress sags in the middle.", priority: [["medium", 6]] },
-    { title: "Wobbly lecture hall seats", desc: "Several seats in the back rows are loose.", priority: [["low", 6]] },
+    { title: "Broken desk chair", desc: "Chair base is cracked and it tips backward.", priority: [["low", 5], ["medium", 3]], ai: ["medium", "A chair that tips backward can injure someone; replace soon.", true] },
+    { title: "Bed frame slats broken", desc: "Two slats snapped; mattress sags in the middle.", priority: [["medium", 6]], ai: ["medium", "Uncomfortable to sleep on, but no immediate risk."] },
+    { title: "Wobbly lecture hall seats", desc: "Several seats in the back rows are loose.", priority: [["low", 6]], ai: ["low", "Loose seats are a minor annoyance."] },
   ],
   "Custodial / Cleaning": [
-    { title: "Trash room overflowing", desc: "Trash room is full and bags are piling into the hallway.", priority: [["medium", 6], ["high", 2]] },
-    { title: "Spill in stairwell", desc: "Sticky spill on the stairwell landing — slip hazard.", priority: [["high", 4], ["medium", 3]] },
-    { title: "Restroom out of supplies", desc: "No soap or paper towels in the restroom.", priority: [["low", 4], ["medium", 4]] },
+    { title: "Trash room overflowing", desc: "Trash room is full and bags are piling into the hallway.", priority: [["medium", 6], ["high", 2]], ai: ["medium", "Overflowing trash attracts pests if left for long."] },
+    { title: "Spill in stairwell", desc: "Sticky spill on the stairwell landing — slip hazard.", priority: [["high", 4], ["medium", 3]], ai: ["high", "A spill on stairs is a fall risk.", true] },
+    { title: "Restroom out of supplies", desc: "No soap or paper towels in the restroom.", priority: [["low", 4], ["medium", 4]], ai: ["low", "Quick restock; no risk."] },
   ],
   "Pest Control": [
-    { title: "Ants in kitchen", desc: "Trail of ants along the counter near the sink.", priority: [["medium", 6], ["low", 2]] },
-    { title: "Cockroach sighting", desc: "Saw cockroaches near the bathroom drain at night.", priority: [["medium", 5], ["high", 3]] },
+    { title: "Ants in kitchen", desc: "Trail of ants along the counter near the sink.", priority: [["medium", 6], ["low", 2]], ai: ["low", "Ants are a nuisance but not a health emergency."] },
+    { title: "Cockroach sighting", desc: "Saw cockroaches near the bathroom drain at night.", priority: [["medium", 5], ["high", 3]], ai: ["medium", "Roaches can spread quickly; treat this week."] },
   ],
   Appliances: [
-    { title: "Washing machine broken", desc: "Laundry room washer won't start but still charges.", priority: [["medium", 6], ["low", 2]] },
-    { title: "Fridge not cooling", desc: "Apartment fridge is warm; food is spoiling.", priority: [["high", 6]] },
-    { title: "Water fountain not working", desc: "Bottle filler station has no water flow.", priority: [["low", 6]] },
+    { title: "Washing machine broken", desc: "Laundry room washer won't start but still charges.", priority: [["medium", 6], ["low", 2]], ai: ["low", "Other washers are available; it's an inconvenience."] },
+    { title: "Fridge not cooling", desc: "Apartment fridge is warm; food is spoiling.", priority: [["high", 6]], ai: ["medium", "Food is spoiling, but there's no safety risk."] },
+    { title: "Water fountain not working", desc: "Bottle filler station has no water flow.", priority: [["low", 6]], ai: ["low", "Other fountains are nearby."] },
   ],
   Other: [
-    { title: "Window won't close", desc: "Window is stuck partially open; rain gets in.", priority: [["high", 4], ["medium", 4]] },
-    { title: "Ceiling tile damaged", desc: "Ceiling tile is cracked and sagging.", priority: [["medium", 5], ["low", 2]] },
+    { title: "Window won't close", desc: "Window is stuck partially open; rain gets in.", priority: [["high", 4], ["medium", 4]], ai: ["medium", "Rain getting in can damage the room; not dangerous."] },
+    { title: "Ceiling tile damaged", desc: "Ceiling tile is cracked and sagging.", priority: [["medium", 5], ["low", 2]], ai: ["medium", "A sagging tile could fall; check it this week.", true] },
   ],
 };
 
@@ -207,6 +209,132 @@ function locationFor(type: BType): string {
   }
 }
 
+// ---------- duplicate reports + mislabeled urgencies (for Active issues and Smart Sort) ----------
+const U_RANK: Record<U, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
+const maxU = (a: U, b: U): U => (U_RANK[a] >= U_RANK[b] ? a : b);
+/** Pre-baked AI fields (stored exactly like a real AI result, marked ai_model = "seed"). */
+function aiFields(urgency: U, reason: string, safety: boolean, category: string, created: Date) {
+  return { ai_urgency: urgency, ai_reason: reason, ai_category: category, ai_safety: safety, ai_status: "done", ai_model: "seed", ai_at: new Date(created.getTime() + 2000).toISOString() };
+}
+
+type Report = { title: string; desc: string; loc: string; priority: U; hoursAgo: number; by?: "alex" | "priya"; status?: "assigned" | "in_progress" };
+type Cluster = {
+  key: string;
+  building: RegExp;
+  category: string;
+  /** Short, clean title for the group (what the AI writes). */
+  groupTitle: string;
+  ai: [U, string, boolean?];
+  /** Extra "Me too" votes from other students, on top of the reporters. */
+  extraVotes: number;
+  reports: Report[];
+};
+
+const CLUSTERS: Cluster[] = [
+  {
+    key: "glenn-leak",
+    building: /Glenn Residence Hall$/,
+    category: "Plumbing",
+    groupTitle: "Water leaking from 3rd-floor ceiling",
+    ai: ["high", "Active ceiling leak reported by several residents; risk of water damage and slippery floors.", true],
+    extraVotes: 6,
+    reports: [
+      { title: "Water leaking from ceiling", desc: "Water dripping from a ceiling tile outside room 312, bucket placed underneath.", loc: "3rd floor hallway", priority: "urgent", hoursAgo: 30, status: "in_progress" },
+      { title: "Ceiling dripping in hallway", desc: "Steady drip from the ceiling near the stairwell on the 3rd floor. Floor is wet.", loc: "3rd floor hallway", priority: "high", hoursAgo: 26, by: "alex" },
+      { title: "Leak above bathroom", desc: "Brown water stain spreading on the bathroom ceiling and it's dripping now.", loc: "3rd floor bathroom", priority: "medium", hoursAgo: 20 },
+      { title: "Water coming through ceiling tile", desc: "Ceiling tile is soaked and sagging, water dripping onto the carpet.", loc: "Room 314", priority: "high", hoursAgo: 9 },
+      { title: "Wet ceiling 3rd floor", desc: "Same leak others reported, still dripping tonight.", loc: "3rd floor hallway", priority: "low", hoursAgo: 3 },
+    ],
+  },
+  {
+    key: "towers-leak",
+    building: /Towers Residence Hall$/,
+    category: "Plumbing",
+    groupTitle: "Ceiling leak in 2nd-floor lounge",
+    ai: ["high", "Ongoing leak with several reports; water near the lounge floor is a slip risk.", true],
+    extraVotes: 5,
+    reports: [
+      { title: "Water leaking from ceiling", desc: "Water dripping from the ceiling in the 2nd floor lounge onto the couches.", loc: "2nd floor lounge", priority: "urgent", hoursAgo: 22 },
+      { title: "Lounge ceiling leaking", desc: "Puddle forming under a ceiling vent in the lounge.", loc: "2nd floor lounge", priority: "high", hoursAgo: 15 },
+      { title: "Drip from ceiling vent", desc: "Water dripping out of the ceiling vent next to the lounge windows.", loc: "2nd floor lounge", priority: "medium", hoursAgo: 7 },
+      { title: "Leak in lounge still going", desc: "The lounge ceiling is still leaking, there are towels everywhere.", loc: "2nd floor lounge", priority: "high", hoursAgo: 2 },
+    ],
+  },
+  {
+    key: "clough-elevator",
+    building: /Clough/,
+    category: "Elevator",
+    groupTitle: "East elevator out of service",
+    ai: ["high", "The east elevator is down, blocking step-free access to upper floors.", true],
+    extraVotes: 3,
+    reports: [
+      { title: "Elevator out of service", desc: "East elevator doors won't open on any floor.", loc: "East elevator", priority: "high", hoursAgo: 18, status: "assigned" },
+      { title: "East elevator broken", desc: "East elevator is stuck on the 4th floor and won't come when called.", loc: "East elevator", priority: "urgent", hoursAgo: 6 },
+    ],
+  },
+  {
+    key: "klaus-ac",
+    building: /Klaus Advanced Computing/,
+    category: "HVAC / Temperature",
+    groupTitle: "Lecture hall 1443 too hot",
+    ai: ["high", "A full lecture hall over 80°F affects many students at once."],
+    extraVotes: 4,
+    reports: [
+      { title: "AC not cooling", desc: "Lecture hall 1443 is over 80°F during the 11am class.", loc: "Room 1443", priority: "high", hoursAgo: 28 },
+      { title: "1443 is really hot", desc: "Room 1443 is super hot again today, the AC doesn't seem to be on.", loc: "Room 1443", priority: "medium", hoursAgo: 4 },
+    ],
+  },
+  {
+    key: "stucen-card",
+    building: /Student Center$/,
+    category: "Doors & Locks",
+    groupTitle: "Side entrance card reader not working",
+    ai: ["high", "The side entrance won't open for anyone, so people prop the door.", true],
+    extraVotes: 2,
+    reports: [
+      { title: "Card reader not working", desc: "BuzzCard reader at the side entrance flashes red for every card.", loc: "Side entrance", priority: "high", hoursAgo: 12 },
+      { title: "Side door won't open", desc: "Side door card reader is broken, everyone has to walk around.", loc: "Side entrance", priority: "medium", hoursAgo: 5 },
+    ],
+  },
+  // Mislabeled urgencies: single reports where the AI disagrees with the reporter.
+  {
+    key: "lightbulb",
+    building: /North Avenue Apartments North/,
+    category: "Lighting",
+    groupTitle: "Desk lamp bulb out",
+    ai: ["low", "A single burned-out bulb is an inconvenience, not a safety risk."],
+    extraVotes: 0,
+    reports: [{ title: "Light bulb out", desc: "The bulb in my desk lamp fixture burned out. URGENT please, I can't study!!", loc: "Room 4107", priority: "urgent", hoursAgo: 5 }],
+  },
+  {
+    key: "gas",
+    building: /North Avenue Apartments North/,
+    category: "Appliances",
+    groupTitle: "Faint gas smell near stove",
+    ai: ["urgent", "A gas smell is a potential safety hazard and should be checked right away.", true],
+    extraVotes: 1,
+    reports: [{ title: "Faint gas smell in kitchen", desc: "Faint gas-like smell near the stove in the 2nd floor kitchen since this afternoon. Probably nothing.", loc: "2nd floor kitchen", priority: "low", hoursAgo: 3 }],
+  },
+  {
+    key: "warm-room",
+    building: /Towers Residence Hall$/,
+    category: "HVAC / Temperature",
+    groupTitle: "Room slightly warm",
+    ai: ["low", "About 76°F with the AC running is mildly uncomfortable, not urgent."],
+    extraVotes: 0,
+    reports: [{ title: "Room too warm", desc: "My room is a bit warm, around 76°F, even though the AC is running.", loc: "Room 208", priority: "urgent", hoursAgo: 8 }],
+  },
+  {
+    key: "wobbly-desk",
+    building: /Clough/,
+    category: "Furniture",
+    groupTitle: "Wobbly study table",
+    ai: ["low", "A wobbly table is a minor annoyance with no risk."],
+    extraVotes: 0,
+    reports: [{ title: "Wobbly desk", desc: "Study table on the 3rd floor wobbles when you write on it.", loc: "3rd floor study area", priority: "high", hoursAgo: 10 }],
+  },
+];
+
 // ---------- people ----------
 // Demo personas get real sign-in accounts (see lib/demo-accounts.ts for emails).
 const DEMO_USERS = DEMO_ACCOUNTS;
@@ -267,7 +395,11 @@ async function createDemoAccounts(): Promise<Map<string, string>> {
 
 async function wipe() {
   // Supabase requires a filter on delete; these match every row.
-  for (const table of ["request_events", "requests"]) {
+  {
+    const { error } = await supabase.from("group_votes").delete().gte("group_id", 0);
+    if (error) throw new Error(`wipe group_votes: ${error.message}. Did you run supabase/migrations/001_ai_features.sql?`);
+  }
+  for (const table of ["ai_calls", "request_events", "requests", "issue_groups"]) {
     const { error } = await supabase.from(table).delete().gte("id", 0);
     if (error) throw new Error(`wipe ${table}: ${error.message}. Did you run supabase/schema.sql?`);
   }
@@ -336,7 +468,7 @@ async function main() {
   });
 
   const now = Date.now();
-  type RequestRow = Record<string, unknown> & { _events: Record<string, unknown>[] };
+  type RequestRow = Record<string, unknown> & { _events: Record<string, unknown>[]; _group: string; _groupTitle?: string; _extraVotes?: number };
   const rows: RequestRow[] = [];
 
   const FRESH_UNASSIGNED = 12; // brand-new requests nobody has claimed yet
@@ -435,7 +567,11 @@ async function main() {
       });
     }
 
+    const [aiU, aiWhy, aiSafety] = issue.ai;
     rows.push({
+      // Open, recent reports of the same issue in the same building share a group (what the AI would do).
+      _group: status !== "resolved" && daysAgo < 30 ? `${building.id}|${issue.title}` : `solo-${rows.length}`,
+      ...aiFields(aiSafety ? maxU(aiU, priority as U) : aiU, aiWhy, Boolean(aiSafety), category, created),
       title: issue.title,
       description: issue.desc,
       building_id: building.id,
@@ -454,15 +590,108 @@ async function main() {
     });
   }
 
+  // Curated duplicate groups and mislabeled urgencies (see CLUSTERS).
+  const priya = demoReporters.find((u) => u.name.includes("Priya"))!;
+  const marcus = techs.find((t) => t.name === "Marcus Reed")!;
+  const luis = techs.find((t) => t.name === "Luis Ortega")!;
+  let curated = 0;
+  for (const c of CLUSTERS) {
+    const building = buildings.find((b) => c.building.test(b.name));
+    if (!building) {
+      console.warn(`  (skipped cluster ${c.key}: no building matches ${c.building})`);
+      continue;
+    }
+    // Random open reports of the same issue in this building join the curated group, like the AI would.
+    const sameIssue = `${building.id}|${c.reports[0].title}`;
+    for (const r of rows) {
+      if (r._group !== sameIssue) continue;
+      r._group = c.key;
+      // Keep the demo personas' votes predictable: they only appear in a group where CLUSTERS says so.
+      if (demoReporters.some((d) => d.id === r.reporter_id)) {
+        const stand = otherReporters[(rows.indexOf(r) * 11) % otherReporters.length];
+        r.reporter_id = stand.id;
+        r._events[0].actor_id = stand.id;
+      }
+    }
+    // Other students only, so Alex and Dr. Shah can still tap "Me too" in the demo.
+    const pool = otherReporters.slice((curated * 7) % otherReporters.length).concat(otherReporters);
+    c.reports.forEach((r, i) => {
+      const created = new Date(now - r.hoursAgo * HOUR);
+      const reporter = r.by === "alex" ? alex : r.by === "priya" ? priya : pool[i];
+      const tech = c.category === "Elevator" ? luis : marcus;
+      const at = (h: number) => new Date(created.getTime() + h * HOUR).toISOString();
+      const events: Record<string, unknown>[] = [{ actor_id: reporter.id, from_status: null, to_status: "submitted", note: null, created_at: created.toISOString() }];
+      if (r.status) events.push({ actor_id: tech.id, from_status: "submitted", to_status: "assigned", note: null, created_at: at(1) });
+      if (r.status === "in_progress") events.push({ actor_id: tech.id, from_status: "assigned", to_status: "in_progress", note: "Found the source above the ceiling; waiting on a part.", created_at: at(3) });
+      rows.push({
+        _group: c.key,
+        _groupTitle: c.groupTitle,
+        _extraVotes: i === 0 ? c.extraVotes : 0,
+        ...aiFields(c.ai[2] ? maxU(c.ai[0], r.priority) : c.ai[0], c.ai[1], Boolean(c.ai[2]), c.category, created),
+        title: r.title,
+        description: r.desc,
+        building_id: building.id,
+        area: building.area,
+        location_detail: r.loc,
+        category: c.category,
+        priority: r.priority,
+        status: r.status ?? "submitted",
+        reporter_id: reporter.id,
+        assignee_id: r.status ? tech.id : null,
+        photo_url: null,
+        created_at: created.toISOString(),
+        updated_at: events[events.length - 1].created_at as string,
+        resolved_at: null,
+        _events: events,
+      });
+    });
+    curated++;
+  }
+
   rows.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
-  const inserted = (await insertChunked(
-    "requests",
-    rows.map((r) => {
-      const { _events, ...row } = r; // eslint-disable-line @typescript-eslint/no-unused-vars
-      return row;
+
+  // One issue group per _group key, created at its first report.
+  const groupKeys = [...new Set(rows.map((r) => r._group))];
+  const firstOf = new Map(groupKeys.map((k) => [k, rows.find((r) => r._group === k)!]));
+  const groups = (await insertChunked(
+    "issue_groups",
+    groupKeys.map((k) => {
+      const r = firstOf.get(k)!;
+      const last = rows.filter((x) => x._group === k).at(-1)!;
+      return { building_id: r.building_id, category: r.category, title: r._groupTitle ?? r.title, created_at: r.created_at, updated_at: last.updated_at };
     }),
     "id",
   )) as { id: number }[];
+  const groupId = new Map(groupKeys.map((k, i) => [k, groups[i].id]));
+
+  const inserted = (await insertChunked(
+    "requests",
+    rows.map((r) => {
+      const { _events, _group, _groupTitle, _extraVotes, ...row } = r; // eslint-disable-line @typescript-eslint/no-unused-vars
+      return { ...row, group_id: groupId.get(_group)! };
+    }),
+    "id",
+  )) as { id: number }[];
+
+  // Votes: every reporter counts as a vote on their group, plus extra "Me too" votes from other students.
+  const votes = new Map<string, Record<string, unknown>>();
+  rows.forEach((r) => {
+    const gid = groupId.get(r._group)!;
+    votes.set(`${gid}|${r.reporter_id}`, { group_id: gid, user_id: r.reporter_id, created_at: r.created_at });
+  });
+  rows.forEach((r, n) => {
+    const gid = groupId.get(r._group)!;
+    for (let i = 0, added = 0; added < (r._extraVotes ?? 0) && i < otherReporters.length; i++) {
+      const u = otherReporters[(n * 3 + i * 5) % otherReporters.length];
+      const k = `${gid}|${u.id}`;
+      if (votes.has(k)) continue;
+      votes.set(k, { group_id: gid, user_id: u.id, created_at: new Date(Date.parse(String(r.created_at)) + (added + 1) * HOUR).toISOString() });
+      added++;
+    }
+  });
+  await insertChunked("group_votes", [...votes.values()], "group_id");
+  const multi = groupKeys.filter((k) => rows.filter((r) => r._group === k).length > 1).length;
+  console.log(`✓ ${groups.length} issue groups (${multi} with duplicate reports) and ${votes.size} votes`);
 
   const events = rows.flatMap((r, i) => r._events.map((e) => ({ ...e, request_id: inserted[i].id })));
   await insertChunked("request_events", events, "id");
