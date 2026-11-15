@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { acceleratedRaycast, computeBoundsTree } from "three-mesh-bvh";
 import { AREA_META } from "@/lib/campus/areas";
-import { buildBuildingMesh, buildRoadGeometry, buildingAtFace, HEIGHT_EXAGGERATION, markBuildingDirty, markColorsDirty, paintBuilding } from "@/lib/campus/geometry";
+import { buildBuildingMesh, buildRoadGeometry, buildingAtVertex, HEIGHT_EXAGGERATION, markBuildingDirty, markColorsDirty, paintBuilding } from "@/lib/campus/geometry";
 import { SCALE } from "@/lib/campus/layout";
 import { HEAT_META, heatBand } from "@/lib/campus/heat";
 import { campusBuildings, campusRoads, displayName, isGT, type CampusBuildingInfo } from "@/lib/campus/zones";
@@ -189,7 +189,8 @@ function Campus({
     invalidate();
   }, [gtMesh, base, hovered, selected, invalidate]);
 
-  const gtAt = (e: ThreeEvent<MouseEvent | PointerEvent>) => (e.faceIndex == null ? null : buildingAtFace(gtMesh, e.faceIndex));
+  // face.a (a vertex number), not faceIndex: the BVH reorders triangles but never vertices.
+  const gtAt = (e: ThreeEvent<MouseEvent | PointerEvent>) => (e.face == null ? null : buildingAtVertex(gtMesh, e.face.a));
   const handlers = interactive
     ? {
         onPointerMove: (e: ThreeEvent<PointerEvent>) => {
