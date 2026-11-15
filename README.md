@@ -70,7 +70,51 @@ Set `NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=true` to list them (with the password) on th
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Production build (what Vercel runs — make sure it passes before pushing) |
 | `npm run lint` / `npm run typecheck` | Code checks |
-| `npm run seed` | Reset & load demo data |
+| `npm run seed` | Reset & load demo data (also recreates the demo accounts) |
+| `npm run test:e2e` | Browser tests for all three role flows (~1 min; builds the app first) |
+| `npm run check:contrast` | WCAG contrast check for every text/background colour pair |
+| `npm run check:coverage` | Every database building is in the 3D map; shows heat-map bands |
+
+## Testing
+
+### Automated (`npm run test:e2e`)
+Playwright drives a real browser against a production build, using the demo accounts and your Supabase project. Tests create their own requests and delete them afterwards. First time only: `npx playwright install chromium`.
+
+| Spec | What it proves |
+|---|---|
+| `e2e/flows.spec.ts` | Student reports via search → success screen → My requests; technician claims, starts, resolves; student sees the note and reopens; admin filters by building, opens the drawer, changes priority, adds a note, assigns; technician sees it in My work; Analytics loads |
+| `e2e/guards.spec.ts` | Signed-out and wrong-role visits redirect; non-GT sign-up rejected; students can't open others' requests; sign out works |
+| `e2e/map.spec.ts` | Heat legend (OK / Busy / Hot spot), Areas toggle, Reset view on student and admin maps |
+
+### Manual checklist (what the tests can't do)
+Headless browsers can't reliably click 3D buildings, use touch gestures or a phone camera. Before a demo, run through this on a **laptop** and a **phone** (`npm run dev`, then open the Network URL it prints on the phone, same Wi-Fi):
+
+**Landing and sign-in**
+- [ ] Landing: 3D campus rotates slowly; headline readable over it
+- [ ] Login → open **Demo accounts** → tap one → fills the form → signs in
+
+**Student (demo.student)**
+- [ ] Hover a GT building (laptop): label shows name + area; city buildings don't react
+- [ ] Tap a building (phone) opens the bottom sheet; dragging the map does **not** select
+- [ ] Camera flies to the building and keeps it visible above the sheet / beside the panel
+- [ ] Sheet: drag the handle down to close (phone); Esc closes (laptop)
+- [ ] Report with a photo **taken with the phone camera** → success screen → View request shows the photo
+- [ ] **Reset view** flies back to the whole campus
+
+**Technician (demo.tech)**
+- [ ] On the phone: Claim → Start work → Resolve (note sheet) with one thumb
+- [ ] Student's My requests updates within ~15 s (or on switching back to the tab)
+
+**Admin (demo.admin)**
+- [ ] Heat map: Glenn and Towers red with pins and pulsing rings, Clough and Howey yellow (fresh seed)
+- [ ] Click a building → list filters, chip shows its name; click again → filter clears
+- [ ] Click a row → drawer; every action shows a toast and appears on the timeline
+- [ ] Free camera: drag rotate, right-drag / two-finger pan, scroll / pinch zoom; can't fly off the map
+- [ ] Areas toggle shows the area colours and legend
+
+**Accessibility**
+- [ ] System setting "Reduce motion" on: no orbit, pins don't pulse, camera jumps instead of flying
+- [ ] Keyboard only: Tab through login, report form, drawer (focus stays inside the drawer; Esc closes)
 
 ## How it works
 
@@ -81,15 +125,17 @@ app/
   report/                Report form + photo upload (server actions in actions.ts)
   my-requests/           Reporter's request list
   requests/[id]/         Detail page + timeline + role-based actions
-  requests/actions.ts    updateTicket(): every status change, with permission rules
-  tech/                  Technician / admin queue with filters
-  admin/                 Analytics dashboard
+  requests/actions.ts    Every request change (updateTicket, setStatus, setPriority, addNote) with permission rules
+  tech/                  Technician queue: one-tap Claim / Start / Resolve cards
+  admin/                 Command Center (map + table + drawer); admin/analytics/ for charts
 lib/
   supabase/server.ts     Service-role client (server only)
   auth.ts                Supabase Auth session + role from the users table: getCurrentUser(), requireUser()
   data.ts                Shared queries
   analytics.ts           Dashboard aggregations
-components/              UI pieces (cards, badges, pickers, charts)
+components/              ui/ (design system), tickets/ (card, detail, timeline, actions),
+                         campus/ (3D map, legends), shell/ (layouts, nav, user menu), charts/
+e2e/                     Playwright tests
 supabase/schema.sql      Database tables
 scripts/seed.ts          Demo data generator
 proxy.ts                 Refreshes the sign-in session; logged-out visitors go to the landing page
