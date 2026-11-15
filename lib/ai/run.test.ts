@@ -157,3 +157,27 @@ describe("runTriage", () => {
     assert.ok(!queries.some((q) => q.table === "issue_groups"));
   });
 });
+
+describe("inheritGroupWork", () => {
+  it("a new report joining an issue in progress takes its technician and status, with a timeline event", async () => {
+    const { inheritGroupWork } = await import("./run");
+    const { sb, queries } = fakeSupabase((q) => {
+      if (q.table === "requests" && has(q, "not")) return { data: [{ id: 1, status: "assigned", assignee_id: "tech-a" }, { id: 2, status: "in_progress", assignee_id: "tech-b" }] };
+      if (q.table === "requests" && has(q, "maybeSingle")) return { data: { status: "submitted" } };
+      if (q.table === "requests" && has(q, "update")) return { data: [{ id: 9 }] };
+      return {};
+    });
+    await inheritGroupWork(sb, 9, 300);
+    const upd = queries.find((q) => q.table === "requests" && has(q, "update"));
+    assert.deepEqual({ ...(arg(upd!, "update") as object), updated_at: undefined }, { assignee_id: "tech-b", status: "in_progress", updated_at: undefined });
+    const ev = queries.find((q) => q.table === "request_events" && has(q, "insert"));
+    assert.equal((arg(ev!, "insert") as { to_status: string }).to_status, "in_progress");
+  });
+
+  it("does nothing when nobody is working on the issue yet", async () => {
+    const { inheritGroupWork } = await import("./run");
+    const { sb, queries } = fakeSupabase(() => ({ data: [] }));
+    await inheritGroupWork(sb, 9, 300);
+    assert.ok(!queries.some((q) => has(q, "update")));
+  });
+});

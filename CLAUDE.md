@@ -40,3 +40,9 @@ Campus maintenance app for the Georgia Tech Campus Solutions Challenge. See READ
 - Every request has a `group_id` (issue group); `createRequest` creates the group + the reporter's vote. Schema changes go in a new file under `supabase/migrations/` AND in `schema.sql`.
 - `npm run test:unit` (mocked AI) after changing `lib/ai/`. Playwright runs with `AI_PROVIDER=off`.
 
+
+## Round 3 conventions
+- Private requests (`visibility = 'private'`) never join a shared issue group, never appear in Active issues or suggestions, and get no vote. Filter `visibility = 'public'` in anything student-facing.
+- Smart Sort stacks (technicians only) are built in `app/tech/page.tsx` from the already-filtered tab list; stack actions go through `updateStack` in `app/requests/actions.ts`, which reuses `checkAllowed` + `commit` per report (one event each).
+- A report merged into a group someone is already handling inherits the assignee and status (`inheritGroupWork` in `lib/ai/run.ts`).
+- Deleting: `deleteRequest` (server action) + `delete_request()` (SQL, one transaction); permissions in `lib/permissions.ts`.

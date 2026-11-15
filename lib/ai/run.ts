@@ -62,6 +62,38 @@ export async function mergeIntoGroup(sb: SupabaseClient, requestId: number, from
   }
   const { count } = await sb.from("requests").select("id", { count: "exact", head: true }).eq("group_id", fromGroupId);
   if (!count) await sb.from("issue_groups").delete().eq("id", fromGroupId);
+  await inheritGroupWork(sb, requestId, toGroupId);
+}
+
+const STEP: Record<string, number> = { submitted: 0, assigned: 1, in_progress: 2 };
+
+/**
+ * A new report that joins an issue someone is already handling takes on that technician and the
+ * most advanced status, so it doesn't sit alone in "Unassigned". Logged on its timeline.
+ */
+export async function inheritGroupWork(sb: SupabaseClient, requestId: number, groupId: number) {
+  const { data } = await sb.from("requests").select("id, status, assignee_id").eq("group_id", groupId).in("status", OPEN).not("assignee_id", "is", null);
+  const lead = ((data ?? []) as { id: number; status: string; assignee_id: string }[])
+    .filter((r) => r.id !== requestId)
+    .sort((a, b) => STEP[b.status] - STEP[a.status])[0];
+  if (!lead) return;
+  const { data: me } = await sb.from("requests").select("status").eq("id", requestId).maybeSingle();
+  if (me?.status !== "submitted") return;
+  const now = new Date().toISOString();
+  const { data: moved } = await sb
+    .from("requests")
+    .update({ assignee_id: lead.assignee_id, status: lead.status, updated_at: now })
+    .eq("id", requestId)
+    .eq("status", "submitted")
+    .select("id");
+  if (!moved?.length) return;
+  await sb.from("request_events").insert({
+    request_id: requestId,
+    actor_id: lead.assignee_id,
+    from_status: "submitted",
+    to_status: lead.status,
+    note: "Joined an issue a technician is already handling",
+  });
 }
 
 type Row = {

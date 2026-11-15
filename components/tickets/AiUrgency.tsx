@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
-import { setTriageUrgency } from "@/app/tech/actions";
+import { setGroupTriageUrgency, setTriageUrgency } from "@/app/tech/actions";
 import { PRIORITIES, PRIORITY_META } from "@/lib/constants";
 import type { Priority, Ticket } from "@/lib/types";
 import { aiDisagrees } from "@/lib/urgency";
@@ -17,7 +17,22 @@ const PILL = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs 
  * Smart Sort badge: "AI: Medium (reported Urgent)". Tap it for the AI's reason and a one-tap
  * Accept / override. The reporter's urgency is never changed; the choice is saved as triage_urgency.
  */
-export function AiUrgency({ t, viewerId, canEdit, affected, defaultOpen = false }: { t: AiFields; viewerId: string; canEdit: boolean; affected?: number; defaultOpen?: boolean }) {
+export function AiUrgency({
+  t,
+  viewerId,
+  canEdit,
+  affected,
+  defaultOpen = false,
+  groupId,
+}: {
+  t: AiFields;
+  viewerId: string;
+  canEdit: boolean;
+  affected?: number;
+  defaultOpen?: boolean;
+  /** Smart Sort stack: the choice applies to every open report in this issue group. */
+  groupId?: number;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   const [chosen, setChosen] = useState<Priority | null>(t.triage_urgency);
   const [pending, start] = useTransition();
@@ -31,7 +46,7 @@ export function AiUrgency({ t, viewerId, canEdit, affected, defaultOpen = false 
     setChosen(u);
     start(async () => {
       try {
-        const res = await setTriageUrgency(t.id, u);
+        const res = groupId ? await setGroupTriageUrgency(groupId, u) : await setTriageUrgency(t.id, u);
         if (!res.ok) throw new Error(res.error);
         toast(res.message);
       } catch (err) {

@@ -16,8 +16,10 @@ import { PageContainer, PageHeader } from "@/components/ui/Surface";
 import { TicketCard } from "@/components/tickets/TicketCard";
 import { TechCardAction } from "./TechCardAction";
 import { SmartSortToggle } from "./SmartSortToggle";
+import { StackCard, type Stack } from "./StackCard";
 import { AiUrgency } from "@/components/tickets/AiUrgency";
-import { aiDisagrees, showsAiUrgency, smartSort } from "@/lib/urgency";
+import { aiDisagrees, effectiveUrgency, showsAiUrgency, smartSort } from "@/lib/urgency";
+import type { Status } from "@/lib/types";
 
 export const metadata: Metadata = { title: "My queue" };
 
@@ -76,12 +78,94 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
       (!category || t.category === category),
   );
   const filtered = Boolean(area || building || priority || category);
+
+  // Smart Sort stacks: reports of the same issue (same issue group) shown as one job, in the
+  // position of their most urgent report. Private requests are never grouped, so they stay single.
+  type Item = { kind: "one"; t: TicketWithRelations } | { kind: "stack"; stack: Stack };
+  const STEP: Record<Status, number> = { submitted: 0, assigned: 1, in_progress: 2, resolved: 3 };
+  const members = new Map<number, TicketWithRelations[]>();
+  if (smart && tab !== "resolved") {
+    for (const t of shown) if (t.visibility === "public") members.set(t.group_id, [...(members.get(t.group_id) ?? []), t]);
+  }
+  const stackIds = [...members].filter(([, list]) => list.length > 1).map(([id]) => id);
+  const { data: groupRows } = stackIds.length ? await db().from("issue_groups").select("id, title").in("id", stackIds) : { data: [] };
+  const groupTitle = new Map((groupRows ?? []).map((g) => [g.id as number, g.title as string]));
+  const items: Item[] = [];
+  const seen = new Set<number>();
+  for (const t of shown) {
+    const list = members.get(t.group_id);
+    if (!list || list.length < 2 || t.visibility !== "public") {
+      items.push({ kind: "one", t });
+      continue;
+    }
+    if (seen.has(t.group_id)) continue;
+    seen.add(t.group_id);
+    const lead = list[0]; // shown is already Smart-sorted, so the first is the most urgent
+    items.push({
+      kind: "stack",
+      stack: {
+        groupId: t.group_id,
+        title: groupTitle.get(t.group_id) ?? lead.title,
+        building: lead.building?.name ?? "Unknown building",
+        category: lead.category,
+        area: lead.area,
+        urgency: list.map(effectiveUrgency).sort((a, b) => PRIORITY_RANK[a] - PRIORITY_RANK[b])[0],
+        status: list.reduce<Status>((s, r) => (STEP[r.status] > STEP[s] ? r.status : s), "submitted"),
+        oldest: list.reduce((o, r) => (r.created_at < o ? r.created_at : o), lead.created_at),
+        votes: affected(lead),
+        reports: list
+          .slice()
+          .sort((a, b) => a.created_at.localeCompare(b.created_at))
+          .map((r) => ({
+            id: r.id,
+            title: r.title,
+            description: r.description,
+            location_detail: r.location_detail,
+            photo_url: r.photo_url,
+            status: r.status,
+            assignee_id: r.assignee_id,
+            assignee: r.assignee?.name ?? null,
+            created_at: r.created_at,
+          })),
+        lead,
+        showAi: showsAiUrgency(lead),
+        highlight: aiDisagrees(lead) && !lead.triage_urgency,
+      },
+    });
+  }
   const urgentWaiting = byTab.unassigned.filter((t) => t.priority === "urgent").length;
   const tabHref = (key: Tab) => {
     const next = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string") as [string, string][]);
     next.set("tab", key);
     return `/tech?${next.toString()}`;
   };
+
+  const renderOne = (t: TicketWithRelations, i: number) => (
+    <FadeIn key={`${t.id}-${t.triage_urgency}`} index={i}>
+      <TicketCard
+        ticket={t}
+        showReporter
+        showAssignee={tab !== "mine"}
+        highlight={smart && t.status !== "resolved" && aiDisagrees(t) && !t.triage_urgency}
+        aside={
+          smart && t.status !== "resolved" && showsAiUrgency(t) ? (
+            <AiUrgency
+              t={t}
+              viewerId={user.id}
+              canEdit={user.role === "admin" || !t.assignee_id || t.assignee_id === user.id}
+              affected={affected(t)}
+            />
+          ) : undefined
+        }
+        footer={
+          // Technicians get a one-tap next step; admins manage requests from the Command Center drawer.
+          user.role === "technician" && (t.status === "submitted" || (t.assignee_id === user.id && t.status !== "resolved")) ? (
+            <TechCardAction id={t.id} title={t.title} status={t.status} mine={t.assignee_id === user.id} />
+          ) : undefined
+        }
+      />
+    </FadeIn>
+  );
 
   return (
     <PageContainer>
@@ -136,32 +220,15 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
             </EmptyState>
           </div>
         ) : (
-          shown.map((t, i) => (
-            <FadeIn key={`${t.id}-${t.triage_urgency}`} index={i}>
-              <TicketCard
-                ticket={t}
-                showReporter
-                showAssignee={tab !== "mine"}
-                highlight={smart && t.status !== "resolved" && aiDisagrees(t) && !t.triage_urgency}
-                aside={
-                  smart && t.status !== "resolved" && showsAiUrgency(t) ? (
-                    <AiUrgency
-                      t={t}
-                      viewerId={user.id}
-                      canEdit={user.role === "admin" || !t.assignee_id || t.assignee_id === user.id}
-                      affected={affected(t)}
-                    />
-                  ) : undefined
-                }
-                footer={
-                  // Technicians get a one-tap next step; admins manage requests from the Command Center drawer.
-                  user.role === "technician" && (t.status === "submitted" || (t.assignee_id === user.id && t.status !== "resolved")) ? (
-                    <TechCardAction id={t.id} title={t.title} status={t.status} mine={t.assignee_id === user.id} />
-                  ) : undefined
-                }
-              />
-            </FadeIn>
-          ))
+          items.map((item, i) =>
+            item.kind === "stack" ? (
+              <FadeIn key={`g${item.stack.groupId}`} index={i}>
+                <StackCard stack={item.stack} viewerId={user.id} canEdit={user.role === "admin" || item.stack.reports.some((r) => !r.assignee_id || r.assignee_id === user.id)} />
+              </FadeIn>
+            ) : (
+              renderOne(item.t, i)
+            ),
+          )
         )}
       </div>
     </PageContainer>

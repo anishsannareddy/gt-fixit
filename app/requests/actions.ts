@@ -264,3 +264,68 @@ export async function deleteRequest(id: number): Promise<ActionResult & { redire
   revalidatePath("/admin/analytics");
   return { ok: true, message: `Request #${id} was deleted.`, redirectTo: user.role === "admin" ? "/admin" : "/my-requests" };
 }
+
+/**
+ * Smart Sort stacks: Claim / Start / Resolve / Assign every open report in an issue group at once.
+ * Each report goes through the same permission check and commit() as a single request, so each
+ * gets its own timeline event and each reporter sees the change in My requests.
+ * Reports another technician owns are left alone. Private requests are never in a shared group.
+ */
+export async function updateStack(formData: FormData): Promise<ActionResult> {
+  const user = await requireUser(["technician", "admin"]);
+  const groupId = Number(formData.get("group_id"));
+  const action = String(formData.get("action")) as TicketAction;
+  const note = String(formData.get("note") ?? "").trim().slice(0, 1000) || null;
+  if (!Number.isInteger(groupId) || groupId <= 0) return fail("Issue not found.");
+  if (!["claim", "start", "resolve", "assign"].includes(action)) return fail("Unknown action.");
+
+  const { data: rows } = await db()
+    .from("requests")
+    .select("id, status, priority, assignee_id, reporter_id")
+    .eq("group_id", groupId)
+    .eq("visibility", "public")
+    .neq("status", "resolved")
+    .order("created_at");
+  const tickets = (rows ?? []) as Ticket[];
+  if (!tickets.length) return fail("These reports were already resolved.");
+
+  let tech: { id: string; name: string } | null = null;
+  if (action === "assign") {
+    const { data } = await db().from("users").select("id, name").eq("id", String(formData.get("assignee_id") ?? "")).eq("role", "technician").maybeSingle();
+    if (!data) return fail("Choose a technician.");
+    tech = data;
+  }
+
+  const now = new Date().toISOString();
+  let done = 0;
+  let skipped = 0;
+  for (const t of tickets) {
+    if (checkAllowed(action, t, user)) {
+      skipped++;
+      continue;
+    }
+    let to: Status = t.status;
+    let patch: Record<string, unknown> = {};
+    let eventNote = note;
+    if (action === "claim") {
+      to = "assigned";
+      patch = { assignee_id: user.id };
+    } else if (action === "assign") {
+      to = t.status === "in_progress" ? "in_progress" : "assigned";
+      patch = { assignee_id: tech!.id };
+      eventNote = [`Assigned to ${tech!.name}`, note].filter(Boolean).join(" — ");
+    } else if (action === "start") {
+      to = "in_progress";
+    } else {
+      to = "resolved";
+      patch = { resolved_at: now };
+    }
+    const err = await commit(user, t, to, patch, eventNote);
+    if (err) skipped++;
+    else done++;
+  }
+  revalidatePath("/issues");
+  if (!done) return fail(skipped ? "Nothing here you can do that to. Another technician may have picked these up." : "Nothing to update.");
+  const verb = { claim: "Claimed", start: "Started", resolve: "Resolved", assign: "Assigned", reopen: "Reopened" }[action];
+  return { ok: true, message: `${verb} ${done} report${done === 1 ? "" : "s"}${skipped ? ` (${skipped} left for another technician)` : ""}.` };
+}

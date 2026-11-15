@@ -51,3 +51,31 @@ export async function setTriageUrgency(id: number, urgency: Priority): Promise<A
   revalidatePath("/admin", "layout");
   return { ok: true, message: accepted ? `Accepted: ${PRIORITY_META[urgency].label}.` : `Urgency set to ${PRIORITY_META[urgency].label}.` };
 }
+
+/** Smart Sort stacks: one-tap urgency for every open report in an issue group the technician may change. */
+export async function setGroupTriageUrgency(groupId: number, urgency: Priority): Promise<ActionResult> {
+  const user = await requireUser(["technician", "admin"]);
+  if (!PRIORITIES.includes(urgency)) return { ok: false, error: "Choose an urgency." };
+  const { data } = await db()
+    .from("requests")
+    .select("id, status, assignee_id, ai_urgency, triage_urgency")
+    .eq("group_id", Number.isInteger(groupId) ? groupId : 0)
+    .eq("visibility", "public")
+    .in("status", OPEN_STATUSES);
+  const rows = ((data ?? []) as { id: number; status: Status; assignee_id: string | null; ai_urgency: Priority | null; triage_urgency: Priority | null }[]).filter(
+    (t) => user.role === "admin" || !t.assignee_id || t.assignee_id === user.id,
+  );
+  if (!rows.length) return { ok: false, error: "Only the assigned technician can change this." };
+  const now = new Date().toISOString();
+  const ids = rows.filter((t) => t.triage_urgency !== urgency).map((t) => t.id);
+  if (ids.length) {
+    const { error } = await db().from("requests").update({ triage_urgency: urgency, triage_by: user.id, triage_at: now, updated_at: now }).in("id", ids);
+    if (error) return { ok: false, error: error.message };
+    await db()
+      .from("request_events")
+      .insert(rows.filter((t) => ids.includes(t.id)).map((t) => ({ request_id: t.id, actor_id: user.id, from_status: t.status, to_status: t.status, note: `Urgency set to ${PRIORITY_META[urgency].label} for the whole issue` })));
+  }
+  revalidatePath("/tech");
+  revalidatePath("/admin", "layout");
+  return { ok: true, message: `Urgency set to ${PRIORITY_META[urgency].label} for ${rows.length} report${rows.length === 1 ? "" : "s"}.` };
+}
