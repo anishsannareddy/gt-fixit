@@ -37,6 +37,7 @@ test("room and description are validated inline, and 'Not in a room' offers a li
 });
 
 test("a private request stays out of Active issues until the reporter makes it public", async ({ browser }) => {
+  test.setTimeout(180_000); // three sign-ins and several page loads
   const title = `E2E private ${Date.now()}`;
   const student = await signIn(browser, ACCOUNTS.student);
   const id = await reportIssue(student, title, { private: true });

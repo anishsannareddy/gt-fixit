@@ -49,20 +49,24 @@ export function DeleteRequest({ id, title }: { id: number; title: string }) {
         aria-labelledby={`delete-title-${id}`}
         className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-3xl border border-line bg-white p-6 text-ink shadow-panel backdrop:bg-navy-950/40"
       >
-        <h2 id={`delete-title-${id}`} className="font-display text-xl font-bold">
-          Delete request #{id}?
-        </h2>
-        <p className="mt-2 text-sm break-words text-ink-muted">
-          “{title}” will be permanently removed, along with its photos and history. This cannot be undone.
-        </p>
-        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="glass" onClick={() => setOpen(false)} disabled={pending}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={confirm} disabled={pending}>
-            {pending ? "Deleting…" : "Delete permanently"}
-          </Button>
-        </div>
+        {open && (
+          <>
+            <h2 id={`delete-title-${id}`} className="font-display text-xl font-bold">
+              Delete request #{id}?
+            </h2>
+            <p className="mt-2 text-sm break-words text-ink-muted">
+              “{title}” will be permanently removed, along with its photos and history. This cannot be undone.
+            </p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="glass" onClick={() => setOpen(false)} disabled={pending}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={confirm} disabled={pending}>
+                {pending ? "Deleting…" : "Delete permanently"}
+              </Button>
+            </div>
+          </>
+        )}
       </dialog>
     </section>
   );
