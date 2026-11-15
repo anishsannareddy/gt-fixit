@@ -7,6 +7,7 @@
  * (dates are relative to "now", so the dashboard always looks current).
  */
 import { config } from "dotenv";
+import { escalateForHazard, isReviewedUrgency } from "../lib/ai/safety";
 import { createClient } from "@supabase/supabase-js";
 import { AREA_META, type Area } from "../lib/campus/areas";
 import { campusBuildings, isGT, type CampusBuildingInfo } from "../lib/campus/zones";
@@ -215,8 +216,26 @@ function locationFor(type: BType): string {
 const U_RANK: Record<U, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
 const maxU = (a: U, b: U): U => (U_RANK[a] >= U_RANK[b] ? a : b);
 /** Pre-baked AI fields (stored exactly like a real AI result, marked ai_model = "seed"). */
-function aiFields(urgency: U, reason: string, safety: boolean, category: string, created: Date) {
-  return { ai_urgency: urgency, ai_reason: reason, ai_category: category, ai_safety: safety, ai_status: "done", ai_model: "seed", ai_at: new Date(created.getTime() + 2000).toISOString() };
+/**
+ * Same rules as lib/ai/run.ts: Smart Sort reviews only reports marked Urgent/High (the template's AI
+ * rating); Medium/Low keep the reporter's urgency unless the text describes a hazard (then escalated).
+ */
+function aiFields(reporter: U, urgency: U, reason: string, safety: boolean, category: string, created: Date, text: string) {
+  const at = new Date(created.getTime() + 2000).toISOString();
+  if (isReviewedUrgency(reporter)) {
+    return { ai_urgency: urgency, ai_reason: reason, ai_category: category, ai_safety: safety, ai_status: "done", ai_model: "seed", ai_reviewed: true, ai_at: at };
+  }
+  const esc = escalateForHazard(reporter, text, safety);
+  return {
+    ai_urgency: esc.urgency,
+    ai_reason: esc.escalated ? reason : null,
+    ai_category: category,
+    ai_safety: esc.escalated,
+    ai_status: "done",
+    ai_model: "seed",
+    ai_reviewed: esc.escalated,
+    ai_at: at,
+  };
 }
 
 type Report = { title: string; desc: string; loc: string; priority: U; hoursAgo: number; by?: "alex" | "priya"; status?: "assigned" | "in_progress" };
@@ -577,7 +596,7 @@ async function main() {
       // Private reports are never grouped.
       _group: !isPrivate && status !== "resolved" && daysAgo < 30 ? `${building.id}|${issue.title}` : `solo-${rows.length}`,
       visibility: isPrivate ? "private" : "public",
-      ...aiFields(aiSafety ? maxU(aiU, priority as U) : aiU, aiWhy, Boolean(aiSafety), category, created),
+      ...aiFields(priority as U, aiSafety ? maxU(aiU, priority as U) : aiU, aiWhy, Boolean(aiSafety), category, created, `${issue.title}. ${issue.desc}`),
       title: issue.title,
       description: issue.desc,
       building_id: building.id,
@@ -633,7 +652,7 @@ async function main() {
         _group: c.key,
         _groupTitle: c.groupTitle,
         _extraVotes: i === 0 ? c.extraVotes : 0,
-        ...aiFields(c.ai[2] ? maxU(c.ai[0], r.priority) : c.ai[0], c.ai[1], Boolean(c.ai[2]), c.category, created),
+        ...aiFields(r.priority, c.ai[2] ? maxU(c.ai[0], r.priority) : c.ai[0], c.ai[1], Boolean(c.ai[2]), c.category, created, `${r.title}. ${r.desc}`),
         title: r.title,
         description: r.desc,
         building_id: building.id,

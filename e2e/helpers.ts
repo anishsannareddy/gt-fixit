@@ -33,7 +33,7 @@ export async function expectToast(page: Page, text: string | RegExp) {
 }
 
 /** As the student: report an issue in Klaus via search + the sheet form. Returns the new request id. */
-export async function reportIssue(page: Page, title: string, opts: { private?: boolean } = {}): Promise<number> {
+export async function reportIssue(page: Page, title: string, opts: { private?: boolean; priority?: "Low" | "Medium" | "High" | "Urgent" } = {}): Promise<number> {
   await page.goto("/report");
   await page.getByRole("combobox", { name: "Search buildings" }).fill("Klaus");
   await page.getByRole("option").first().click();
@@ -47,6 +47,7 @@ export async function reportIssue(page: Page, title: string, opts: { private?: b
   await sheet.getByText("Plumbing", { exact: true }).click();
   await sheet.locator("#title").fill(title);
   await sheet.locator("#description").fill("Created by the automated end-to-end test.");
+  if (opts.priority) await sheet.getByRole("group", { name: "How urgent is it?" }).getByText(opts.priority, { exact: true }).click();
   if (opts.private) await sheet.getByRole("group", { name: "Who can see it?" }).getByText("Private", { exact: true }).click();
   await page.getByRole("button", { name: "Submit request" }).click();
   await expect(sheet.getByText("Thanks, it's reported!")).toBeVisible();

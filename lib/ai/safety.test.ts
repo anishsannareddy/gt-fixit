@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applySafety, detectHazards } from "./safety";
+import { applySafety, detectHazards, escalateForHazard } from "./safety";
 
 describe("detectHazards", () => {
   it("flags severe hazards", () => {
@@ -65,4 +65,12 @@ describe("applySafety", () => {
     assert.equal(r.urgency, "low");
     assert.equal(r.safety, false);
   });
+});
+
+it("escalateForHazard: Medium/Low only go up, severe → Urgent, other → High", () => {
+  assert.equal(escalateForHazard("low", "Smells like gas in the kitchen").urgency, "urgent");
+  assert.equal(escalateForHazard("medium", "Front door won't lock").urgency, "high");
+  assert.equal(escalateForHazard("low", "Paint is chipped").escalated, false);
+  assert.equal(escalateForHazard("low", "Paint is chipped", true).urgency, "high");
+  assert.equal(escalateForHazard("urgent", "Door won't lock").urgency, "urgent");
 });

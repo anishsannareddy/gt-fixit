@@ -35,6 +35,13 @@ test("Smart Sort puts AI-urgent work first, flags disagreements, and saves a one
   await expect(gas.getByRole("button", { name: /AI: Urgent \(reported Low\)/ })).toBeVisible();
   await expect(gas.getByText("Safety")).toBeVisible();
 
+  // Only reviewed requests carry the badge: plain Medium/Low cards have none
+  await expect(page.getByRole("article").filter({ hasNot: page.getByRole("button", { name: /^AI:/ }) }).first()).toBeVisible();
+
+  // Confirmed Urgent/High come before downgraded ones: the gas smell is above the light bulb
+  const titles = await page.getByRole("article").locator("h3").allInnerTexts();
+  expect(titles.indexOf("Faint gas smell in kitchen")).toBeLessThan(titles.indexOf("Light bulb out"));
+
   // The light bulb marked Urgent: AI says Low, and the card says so in words
   const bulb = page.getByRole("article").filter({ hasText: "Light bulb out" });
   await expect(bulb.getByText("AI disagrees")).toBeVisible();

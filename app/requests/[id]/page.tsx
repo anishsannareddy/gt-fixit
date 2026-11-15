@@ -9,6 +9,7 @@ import { ArrowLeftIcon } from "@/components/ui/Icons";
 import { PageContainer } from "@/components/ui/Surface";
 import { TicketActions } from "@/components/tickets/TicketActions";
 import { AiTriagePanel } from "@/components/tickets/AiUrgency";
+import { showsAiUrgency } from "@/lib/urgency";
 import { TicketDetail } from "@/components/tickets/TicketDetail";
 import { VisibilityControl } from "@/components/tickets/VisibilityControl";
 
@@ -48,7 +49,7 @@ export default async function RequestDetailPage(props: PageProps<"/requests/[id]
         events={events}
         actions={
           <>
-            {user.role !== "reporter" && ticket.status !== "resolved" && (
+            {user.role !== "reporter" && ticket.status !== "resolved" && showsAiUrgency(ticket) && (
               <AiTriagePanel t={ticket} viewerId={user.id} canEdit={user.role === "admin" || !ticket.assignee_id || ticket.assignee_id === user.id} />
             )}
             {user.role === "reporter" && <VisibilityControl key={ticket.visibility} id={ticket.id} value={ticket.visibility} />}

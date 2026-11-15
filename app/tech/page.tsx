@@ -17,7 +17,7 @@ import { TicketCard } from "@/components/tickets/TicketCard";
 import { TechCardAction } from "./TechCardAction";
 import { SmartSortToggle } from "./SmartSortToggle";
 import { AiUrgency } from "@/components/tickets/AiUrgency";
-import { aiDisagrees, smartSort } from "@/lib/urgency";
+import { aiDisagrees, showsAiUrgency, smartSort } from "@/lib/urgency";
 
 export const metadata: Metadata = { title: "My queue" };
 
@@ -144,7 +144,7 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
                 showAssignee={tab !== "mine"}
                 highlight={smart && t.status !== "resolved" && aiDisagrees(t) && !t.triage_urgency}
                 aside={
-                  smart && t.status !== "resolved" ? (
+                  smart && t.status !== "resolved" && showsAiUrgency(t) ? (
                     <AiUrgency
                       t={t}
                       viewerId={user.id}

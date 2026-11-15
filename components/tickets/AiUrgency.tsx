@@ -9,7 +9,7 @@ import { cn } from "@/components/ui/cn";
 import { AlertIcon, ChevronRightIcon, SparkleIcon } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 
-export type AiFields = Pick<Ticket, "id" | "priority" | "ai_urgency" | "ai_reason" | "ai_safety" | "ai_status" | "triage_urgency" | "triage_by">;
+export type AiFields = Pick<Ticket, "id" | "priority" | "ai_urgency" | "ai_reason" | "ai_safety" | "ai_status" | "ai_reviewed" | "triage_urgency" | "triage_by">;
 
 const PILL = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset whitespace-nowrap";
 
@@ -23,7 +23,7 @@ export function AiUrgency({ t, viewerId, canEdit, affected, defaultOpen = false 
   const [pending, start] = useTransition();
   const toast = useToast();
   const panelId = useId();
-  const rated = t.ai_status === "done" && t.ai_urgency;
+  const rated = t.ai_reviewed && t.ai_status === "done" && t.ai_urgency;
   const disagrees = aiDisagrees(t);
 
   function choose(u: Priority) {

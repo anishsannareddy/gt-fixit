@@ -35,6 +35,7 @@ Campus maintenance app for the Georgia Tech Campus Solutions Challenge. See READ
 - `lib/ai/provider.ts` is the ONLY file that imports `openai`. Everything else calls `generateStructured`. Never expose `OPENAI_API_KEY` (no `NEXT_PUBLIC_`), and keep provider imports out of Client Components.
 - AI runs once per submission in `after()` (`lib/ai/service.ts` → `lib/ai/run.ts`); pages never call it. It must never block or fail a submission: any error → `ai_status = 'fallback'`.
 - The safety rule lives in `lib/ai/safety.ts` and is applied in code after every model call. Don't rely on the prompt alone.
+- Smart Sort reviews only requests reported Urgent/High (`ai_reviewed`). Medium/Low keep the reporter's urgency; `escalateForHazard` in `lib/ai/safety.ts` raises them for hazards (severe → Urgent, other → High). Medium/Low public requests still get one AI call, for duplicate grouping only. Private requests are never grouped.
 - AI never writes `requests.priority` (the reporter's). AI → `ai_*` columns; technician choice → `triage_*`. Effective urgency: `lib/urgency.ts`.
 - Every request has a `group_id` (issue group); `createRequest` creates the group + the reporter's vote. Schema changes go in a new file under `supabase/migrations/` AND in `schema.sql`.
 - `npm run test:unit` (mocked AI) after changing `lib/ai/`. Playwright runs with `AI_PROVIDER=off`.

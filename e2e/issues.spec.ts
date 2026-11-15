@@ -90,7 +90,8 @@ test("the report form suggests a matching active issue, and Me too replaces a ne
 
 test("with the AI off, submitting still works: reporter's urgency kept, its own issue, reporter counted", async ({ browser }) => {
   const page = await signIn(browser, ACCOUNTS.student);
-  const id = await reportIssue(page, "E2E fallback check");
+  // High is reviewed by Smart Sort, so with the AI off it falls back.
+  const id = await reportIssue(page, "E2E fallback check", { priority: "High" });
   try {
     await expect
       .poll(async () => (await admin().from("requests").select("ai_status").eq("id", id).single()).data?.ai_status, { timeout: 15_000 })

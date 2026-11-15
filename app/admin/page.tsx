@@ -18,6 +18,7 @@ import { XIcon } from "@/components/ui/Icons";
 import { PageContainer, PageHeader } from "@/components/ui/Surface";
 import { TicketActions } from "@/components/tickets/TicketActions";
 import { AiTriagePanel } from "@/components/tickets/AiUrgency";
+import { showsAiUrgency } from "@/lib/urgency";
 import { TicketDetail } from "@/components/tickets/TicketDetail";
 import { AdminDrawer } from "./AdminDrawer";
 import { SearchBox } from "@/components/ui/SearchBox";
@@ -202,7 +203,7 @@ export default async function CommandCenter(props: PageProps<"/admin">) {
               events={drawerEvents}
               actions={
                 <>
-                  {drawerTicket.status !== "resolved" && <AiTriagePanel key={drawerTicket.id} t={drawerTicket} viewerId={user.id} canEdit />}
+                  {drawerTicket.status !== "resolved" && showsAiUrgency(drawerTicket) && <AiTriagePanel key={drawerTicket.id} t={drawerTicket} viewerId={user.id} canEdit />}
                   <TicketActions ticket={drawerTicket} viewer={{ id: user.id, role: user.role }} technicians={technicians.map((t) => ({ id: t.id, name: t.name }))} />
                 </>
               }
