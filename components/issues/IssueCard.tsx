@@ -18,7 +18,18 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  * One active campus issue. "Me too" updates the count right away (optimistic) and rolls back
  * with a toast if the server says no. `detail` enables the expandable reports + timeline.
  */
-export function IssueCard({ issue, detail, compact = false }: { issue: ActiveIssue; detail?: IssueDetail; compact?: boolean }) {
+export function IssueCard({
+  issue,
+  detail,
+  compact = false,
+  onVoted,
+}: {
+  issue: ActiveIssue;
+  detail?: IssueDetail;
+  compact?: boolean;
+  /** Called after a successful "Me too" (used by the report form's suggestions). */
+  onVoted?: (issue: ActiveIssue) => void;
+}) {
   const [voted, setVoted] = useState(issue.voted);
   const [affected, setAffected] = useState(issue.affected);
   const [open, setOpen] = useState(false);
@@ -36,6 +47,7 @@ export function IssueCard({ issue, detail, compact = false }: { issue: ActiveIss
         if (!res.ok) throw new Error(res.error);
         if ("affected" in res && res.affected) setAffected(res.affected);
         toast(res.message);
+        if (want) onVoted?.(issue);
       } catch (err) {
         setVoted(!want);
         setAffected((n) => Math.max(1, n + (want ? -1 : 1)));

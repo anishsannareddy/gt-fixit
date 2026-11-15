@@ -65,3 +65,16 @@ test("tapping a building with active issues lists them first", async ({ browser 
   await sheet.getByRole("button", { name: "Report a new issue" }).click();
   await expect(sheet.locator("#title")).toBeVisible();
 });
+
+test("the report form suggests a matching active issue, and Me too replaces a new report", async ({ browser }) => {
+  const page = await signIn(browser, ACCOUNTS.faculty);
+  await page.getByRole("combobox", { name: "Search buildings" }).fill("Towers");
+  await page.getByRole("option").first().click();
+  const sheet = page.getByRole("dialog");
+  await sheet.getByRole("button", { name: "Report a new issue" }).click();
+  await sheet.locator("#title").fill("Lounge ceiling dripping water");
+  const suggestions = sheet.getByRole("region", { name: "Similar active issues" });
+  await expect(suggestions.getByRole("article", { name: TOWERS })).toBeVisible({ timeout: 10_000 });
+  await suggestions.getByRole("button", { name: "Me too" }).click();
+  await expect(sheet.getByText("You're counted in")).toBeVisible();
+});

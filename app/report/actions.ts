@@ -4,6 +4,10 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { runTriageForRequest } from "@/lib/ai/service";
+import { aiEnabled, generateStructured } from "@/lib/ai/provider";
+import { takeAiBudget } from "@/lib/ai/run";
+import { findSimilar, wordOverlap } from "@/lib/ai/triage";
+import { getActiveIssues, type ActiveIssue } from "@/lib/issues";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { CATEGORIES, PHOTO_BUCKET, PRIORITIES } from "@/lib/constants";
@@ -103,4 +107,35 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
   after(() => runTriageForRequest(requestId, user.id));
   // The report sheet shows a success screen with a link to the new request.
   return { created: { id: data.id } };
+}
+
+/**
+ * Report form: active issues in this building that look like the draft, so the student can tap
+ * "Me too" instead of filing a duplicate. Uses the AI when available (rate limited), otherwise
+ * simple word overlap. Never blocks reporting: any failure just returns no suggestions.
+ */
+export async function findSimilarIssues(buildingId: number, title: string, description: string): Promise<ActiveIssue[]> {
+  const user = await requireUser(["reporter"]);
+  if (!Number.isInteger(buildingId) || buildingId <= 0) return [];
+  const draft = `${title.slice(0, 120)} ${description.slice(0, 2000)}`.trim();
+  if (draft.length < 8) return [];
+  try {
+    const issues = await getActiveIssues(user.id, { buildingId });
+    if (!issues.length) return [];
+    const candidates = issues.map((i) => ({ id: i.id, title: i.title, category: i.category, reports: i.reports, sample: i.title }));
+
+    let ids: number[] | null = null;
+    if (aiEnabled() && (await takeAiBudget(db(), user.id, "similar"))) {
+      const { data: b } = await db().from("buildings").select("name").eq("id", buildingId).maybeSingle();
+      const res = await findSimilar({ title, description, building: b?.name ?? "" }, candidates, generateStructured);
+      if (res.ok) ids = res.ids;
+    }
+    ids ??= issues.filter((i) => wordOverlap(draft, `${i.title} ${i.category}`) >= 0.5).map((i) => i.id);
+    return ids
+      .map((id) => issues.find((i) => i.id === id))
+      .filter((i): i is ActiveIssue => Boolean(i))
+      .slice(0, 3);
+  } catch {
+    return [];
+  }
 }

@@ -25,6 +25,7 @@ export function ReportMap({ buildings, issues }: { buildings: Building[]; issues
   const [reporting, setReporting] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<number | null>(null);
+  const [joined, setJoined] = useState<ActiveIssue | null>(null);
   const desktop = useIsDesktop();
   const byOsmId = useMemo(() => new Map(buildings.filter((b) => b.osm_id).map((b) => [b.osm_id!, b])), [buildings]);
 
@@ -32,10 +33,11 @@ export function ReportMap({ buildings, issues }: { buildings: Building[]; issues
     setBusy(null);
     setCreatedId(null);
     setReporting(false);
+    setJoined(null);
     setSelected(b);
   }
   const here = selected ? issues.filter((i) => i.building.id === selected.id) : [];
-  const showIssues = here.length > 0 && !reporting && !createdId;
+  const showIssues = here.length > 0 && !reporting && !createdId && !joined;
   const onCreated = useCallback((id: number) => setCreatedId(id), []);
 
   return (
@@ -70,10 +72,10 @@ export function ReportMap({ buildings, issues }: { buildings: Building[]; issues
       <Sheet
         open={selected !== null}
         onClose={() => choose(null)}
-        eyebrow={createdId ? "Request sent" : showIssues ? "Active issues here" : "Report an issue"}
+        eyebrow={createdId ? "Request sent" : joined ? "Counted you in" : showIssues ? "Active issues here" : "Report an issue"}
         title={selected?.name ?? ""}
         footer={
-          createdId ? undefined : showIssues ? (
+          createdId || joined ? undefined : showIssues ? (
             <Button variant="gold" size="lg" full onClick={() => setReporting(true)}>
               <PlusIcon className="size-5" /> Report a new issue
             </Button>
@@ -84,7 +86,9 @@ export function ReportMap({ buildings, issues }: { buildings: Building[]; issues
           )
         }
       >
-        {selected && createdId ? (
+        {selected && joined ? (
+          <Joined issue={joined} onAnother={() => choose(null)} />
+        ) : selected && createdId ? (
           <Success id={createdId} building={selected} onAnother={() => choose(null)} />
         ) : selected && showIssues ? (
           <div>
@@ -105,7 +109,7 @@ export function ReportMap({ buildings, issues }: { buildings: Building[]; issues
               <span>Goes to the {AREA_META[selected.area].label} maintenance team</span>
             </div>
             {/* key = start a fresh form when a different building is picked */}
-            <ReportForm key={selected.id} building={selected} onBusy={setBusy} onCreated={onCreated} />
+            <ReportForm key={selected.id} building={selected} onBusy={setBusy} onCreated={onCreated} hasIssues={here.length > 0} onJoined={setJoined} />
           </>
         ) : null}
       </Sheet>
@@ -133,6 +137,28 @@ function Success({ id, building, onAnother }: { id: number; building: Building; 
         <Link href="/my-requests" className="mt-1 text-sm font-semibold text-ink underline decoration-gt-gold decoration-2 underline-offset-4">
           See all my requests
         </Link>
+      </div>
+    </div>
+  );
+}
+
+function Joined({ issue, onAnother }: { issue: ActiveIssue; onAnother: () => void }) {
+  return (
+    <div className="flex flex-col items-center py-4 text-center" role="status">
+      <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }}>
+        <GemCheck className="size-32" />
+      </motion.div>
+      <h3 className="mt-2 font-display text-2xl font-bold">You&apos;re counted in</h3>
+      <p className="mt-1 text-ink-muted">
+        No need for a new report: maintenance can see that one more person is affected by <span className="font-semibold text-ink">{issue.title}</span>.
+      </p>
+      <div className="mt-6 flex w-full flex-col gap-2">
+        <Link href="/issues" className={buttonClass({ variant: "gold", size: "lg", full: true })}>
+          See active issues
+        </Link>
+        <Button size="lg" full onClick={onAnother}>
+          Report something else
+        </Button>
       </div>
     </div>
   );

@@ -1,8 +1,10 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent } from "react";
 import imageCompression from "browser-image-compression";
+import type { ActiveIssue } from "@/lib/issues";
 import type { Building } from "@/lib/types";
+import { IssueCard } from "@/components/issues/IssueCard";
 import { CATEGORIES, PHOTO_BUCKET, PRIORITIES, PRIORITY_META, type Category } from "@/lib/constants";
 import { browserSupabase } from "@/lib/supabase/browser";
 import { PhotoUploader } from "@/components/PhotoUploader";
@@ -10,7 +12,7 @@ import { FieldError, Input, Label, SegmentedControl, Textarea } from "@/componen
 import {
   ApplianceIcon, BoltIcon, BugIcon, BulbIcon, ChairIcon, DotsIcon, DropletIcon, ElevatorIcon, LockIcon, SparkleIcon, ThermometerIcon,
 } from "@/components/ui/Icons";
-import { createPhotoUploadUrl, createRequest, type ReportState } from "./actions";
+import { createPhotoUploadUrl, createRequest, findSimilarIssues, type ReportState } from "./actions";
 
 export const REPORT_FORM_ID = "report-form";
 
@@ -43,13 +45,20 @@ export function ReportForm({
   building,
   onBusy,
   onCreated,
+  hasIssues = false,
+  onJoined,
 }: {
   building: Building;
   onBusy: (label: string | null) => void;
   /** Called with the new request id once it's saved. */
   onCreated: (id: number) => void;
+  /** The building has active issues, so look for similar ones while the student types. */
+  hasIssues?: boolean;
+  /** The student tapped "Me too" on a suggestion instead of submitting. */
+  onJoined?: (issue: ActiveIssue) => void;
 }) {
   const [state, formAction, saving] = useActionState<ReportState, FormData>(createRequest, undefined);
+  const similar = useSimilarIssues(building.id, hasIssues);
   const [photo, setPhoto] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const errors = state?.fieldErrors ?? {};
@@ -133,7 +142,7 @@ export function ReportForm({
 
       <div>
         <Label htmlFor="title">Short summary</Label>
-        <Input id="title" name="title" placeholder="e.g. AC not cooling" maxLength={120} aria-invalid={Boolean(errors.title)} />
+        <Input id="title" name="title" placeholder="e.g. AC not cooling" maxLength={120} aria-invalid={Boolean(errors.title)} onChange={(e) => similar.setTitle(e.target.value)} />
         <FieldError>{errors.title}</FieldError>
       </div>
 
@@ -141,9 +150,20 @@ export function ReportForm({
         <Label htmlFor="description" optional>
           Details
         </Label>
-        <Textarea id="description" name="description" rows={3} placeholder="What's happening? When did it start?" maxLength={2000} />
+        <Textarea id="description" name="description" rows={3} placeholder="What's happening? When did it start?" maxLength={2000} onChange={(e) => similar.setDescription(e.target.value)} />
         <FieldError>{errors.description}</FieldError>
       </div>
+
+      {similar.issues.length > 0 && (
+        <section aria-live="polite" aria-label="Similar active issues" className="rounded-2xl bg-gold-50 p-3 ring-1 ring-gt-gold/50">
+          <p className="mb-2.5 px-1 text-sm font-semibold text-ink">Is it one of these? Tap Me too instead of sending a new report.</p>
+          <div className="space-y-2">
+            {similar.issues.map((i) => (
+              <IssueCard key={i.id} issue={i} compact onVoted={onJoined} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div>
         <p className="mb-1.5 text-sm font-semibold text-ink">Photo</p>
@@ -155,4 +175,31 @@ export function ReportForm({
       {Object.keys(errors).length > 0 && <FieldError>Please fix the highlighted fields above.</FieldError>}
     </form>
   );
+}
+
+/**
+ * Looks for active issues in this building that match what the student is typing.
+ * Waits 1.2s after they stop typing, needs 12+ characters, and skips repeat queries.
+ */
+function useSimilarIssues(buildingId: number, enabled: boolean) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [issues, setIssues] = useState<ActiveIssue[]>([]);
+  const last = useRef("");
+
+  useEffect(() => {
+    const text = `${title.trim()} ${description.trim()}`.trim();
+    if (!enabled || text.length < 12 || text === last.current) return;
+    const timer = setTimeout(async () => {
+      last.current = text;
+      try {
+        setIssues(await findSimilarIssues(buildingId, title, description));
+      } catch {
+        // Suggestions are optional; never get in the way of reporting.
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [buildingId, enabled, title, description]);
+
+  return { issues, setTitle, setDescription };
 }
