@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireUser } from "@/lib/demo-auth";
+import { requireUser } from "@/lib/auth";
 import { getBuildings } from "@/lib/data";
 import { ReportMap } from "./ReportMap";
 

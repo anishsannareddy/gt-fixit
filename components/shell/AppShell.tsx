@@ -3,33 +3,14 @@ import type { ReactNode } from "react";
 import type { User } from "@/lib/types";
 import { ROLE_META } from "@/lib/constants";
 import { Logo } from "@/components/ui/Logo";
-import { SwitchIcon } from "@/components/ui/Icons";
-import { signOut } from "@/app/actions";
 import { MobileTabBar, RailNav, TopNav } from "./nav";
+import { UserMenu } from "./UserMenu";
 
 /** Picks the layout for the signed-in role. Signed-out visitors get the bare page (the landing hero). */
 export function AppShell({ user, children }: { user: User | null; children: ReactNode }) {
   if (!user) return <div className="bg-campus flex min-h-dvh flex-col">{children}</div>;
   if (user.role === "admin") return <AdminShell user={user}>{children}</AdminShell>;
   return <CampusShell user={user}>{children}</CampusShell>;
-}
-
-function initials(name: string) {
-  return name.replace(/^Dr\.\s*/, "").split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase();
-}
-
-function SwitchRole({ compact = false }: { compact?: boolean }) {
-  return (
-    <form action={signOut}>
-      <button
-        title="Sign out / switch demo role"
-        className="flex min-h-10 items-center gap-2 rounded-xl border border-line px-3 text-sm font-semibold text-ink-muted transition hover:bg-slate-100 hover:text-ink"
-      >
-        <SwitchIcon className="size-4" />
-        <span className={compact ? "sr-only" : "hidden sm:inline"}>Switch role</span>
-      </button>
-    </form>
-  );
 }
 
 /** Student + technician: floating glass top bar over the navy "campus" gradient. */
@@ -42,17 +23,8 @@ function CampusShell({ user, children }: { user: User; children: ReactNode }) {
             <Logo />
           </Link>
           <TopNav role={user.role} />
-          <div className="ml-auto flex items-center gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="grid size-9 place-items-center rounded-full bg-gt-gold/20 text-xs font-bold text-gold-ink ring-1 ring-gt-gold/40">
-                {initials(user.name)}
-              </span>
-              <span className="hidden leading-tight sm:block">
-                <span className="block text-sm font-semibold">{user.name}</span>
-                <span className="block text-xs text-ink-muted">{ROLE_META[user.role].label}</span>
-              </span>
-            </div>
-            <SwitchRole />
+          <div className="ml-auto">
+            <UserMenu name={user.name} email={user.email} role={ROLE_META[user.role].label} />
           </div>
         </div>
       </header>
@@ -73,19 +45,8 @@ function AdminShell({ user, children }: { user: User; children: ReactNode }) {
         </Link>
         <p className="mt-6 mb-2 px-3 font-mono text-[0.65rem] tracking-[0.25em] text-signal uppercase">Operations</p>
         <RailNav role="admin" />
-        <div className="mt-auto rounded-2xl border border-line bg-white p-3">
-          <div className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-lg bg-signal/15 font-mono text-xs font-bold text-signal ring-1 ring-signal/30">
-              {initials(user.name)}
-            </span>
-            <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-semibold">{user.name}</span>
-              <span className="block truncate text-xs text-ink-muted">{user.title ?? "Admin"}</span>
-            </span>
-          </div>
-          <div className="mt-3">
-            <SwitchRole />
-          </div>
+        <div className="mt-auto rounded-2xl border border-line bg-page p-2">
+          <UserMenu name={user.name} email={user.email} role={user.title ?? "Admin"} align="up" tone="command" />
         </div>
       </aside>
 
@@ -96,7 +57,7 @@ function AdminShell({ user, children }: { user: User; children: ReactNode }) {
         </Link>
         <span className="rounded-md border border-signal/30 bg-signal/10 px-1.5 py-0.5 font-mono text-[0.6rem] tracking-widest text-signal uppercase">Admin</span>
         <div className="ml-auto">
-          <SwitchRole compact />
+          <UserMenu name={user.name} email={user.email} role="Admin" tone="command" />
         </div>
       </header>
 

@@ -10,6 +10,7 @@ import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import { AREA_META, type Area } from "../lib/campus/areas";
 import { campusBuildings, isGT, type CampusBuildingInfo } from "../lib/campus/zones";
+import { DEMO_ACCOUNTS, demoPassword } from "../lib/demo-accounts";
 
 config({ path: ".env.local" });
 
@@ -207,14 +208,8 @@ function locationFor(type: BType): string {
 }
 
 // ---------- people ----------
-const DEMO_USERS = [
-  { name: "Alex Rivera", role: "reporter", title: "2nd-year CS student · Glenn Hall" },
-  { name: "Dr. Priya Shah", role: "reporter", title: "Faculty · School of ECE" },
-  { name: "Marcus Reed", role: "technician", title: "HVAC & Electrical Technician" },
-  { name: "Tasha Coleman", role: "technician", title: "Plumbing Technician" },
-  { name: "Luis Ortega", role: "technician", title: "General Maintenance Technician" },
-  { name: "Jordan Ellis", role: "admin", title: "Facilities Operations Manager" },
-] as const;
+// Demo personas get real sign-in accounts (see lib/demo-accounts.ts for emails).
+const DEMO_USERS = DEMO_ACCOUNTS;
 const EXTRA_TECHS = ["Dana Whitfield", "Kevin Park"];
 const FIRST = ["Sam", "Jamie", "Taylor", "Morgan", "Riley", "Casey", "Avery", "Quinn", "Drew", "Reese", "Skyler", "Emerson", "Hayden", "Rowan", "Parker", "Logan", "Kai", "Jules", "Noel", "Sage"];
 const LAST = ["Nguyen", "Patel", "Kim", "Johnson", "Garcia", "Okafor", "Chen", "Williams", "Brooks", "Diaz", "Singh", "Lopez", "Martin", "Lee", "Hughes"];
@@ -240,6 +235,34 @@ async function ensureBucket() {
   });
   if (error) throw new Error(`bucket: ${error.message}`);
   console.log(`✓ Created storage bucket "${PHOTO_BUCKET}"`);
+}
+
+/**
+ * (Re)create the Supabase Auth accounts for the demo personas.
+ * Old demo accounts are deleted first so the password always matches DEMO_ACCOUNT_PASSWORD.
+ * Accounts people created themselves through sign-up are left alone.
+ */
+async function createDemoAccounts(): Promise<Map<string, string>> {
+  const wanted = new Set(DEMO_ACCOUNTS.map((a) => a.email));
+  for (let page = 1; ; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(`list auth users: ${error.message}`);
+    for (const u of data.users) {
+      if (u.email && wanted.has(u.email)) {
+        const del = await supabase.auth.admin.deleteUser(u.id);
+        if (del.error) throw new Error(`delete ${u.email}: ${del.error.message}`);
+      }
+    }
+    if (data.users.length < 1000) break;
+  }
+  const ids = new Map<string, string>();
+  for (const a of DEMO_ACCOUNTS) {
+    const { data, error } = await supabase.auth.admin.createUser({ email: a.email, password: demoPassword(), email_confirm: true, user_metadata: { name: a.name } });
+    if (error || !data.user) throw new Error(`create ${a.email}: ${error?.message}. Is Email sign-in enabled in Supabase → Authentication → Providers?`);
+    ids.set(a.email, data.user.id);
+  }
+  console.log(`✓ ${ids.size} demo sign-in accounts`);
+  return ids;
 }
 
 async function wipe() {
@@ -273,8 +296,11 @@ async function main() {
   const perArea = buildings.reduce<Record<string, number>>((m, b) => ((m[b.area] = (m[b.area] ?? 0) + 1), m), {});
   console.log(`✓ ${buildings.length} GT buildings (${Object.entries(perArea).map(([a, n]) => `${AREA_META[a as Area].label}: ${n}`).join(", ")})`);
 
+  const accounts = await createDemoAccounts();
+  // Inserted in two batches: when one insert mixes rows with and without an `id`,
+  // Supabase sends null for the missing ids instead of letting the database generate them.
+  const demoRows = DEMO_USERS.map((u) => ({ ...u, id: accounts.get(u.email)!, is_demo: true }));
   const userRows = [
-    ...DEMO_USERS.map((u) => ({ ...u, is_demo: true })),
     ...EXTRA_TECHS.map((name) => ({ name, role: "technician", title: "Maintenance Technician", is_demo: false })),
     ...Array.from({ length: 40 }, (_, i) => ({
       name: `${FIRST[i % FIRST.length]} ${LAST[(i * 7) % LAST.length]}`,
@@ -283,7 +309,10 @@ async function main() {
       is_demo: false,
     })),
   ];
-  const users = (await insertChunked("users", userRows, "id, name, role, is_demo")) as {
+  const users = [
+    ...(await insertChunked("users", demoRows, "id, name, role, is_demo")),
+    ...(await insertChunked("users", userRows, "id, name, role, is_demo")),
+  ] as {
     id: string;
     name: string;
     role: string;
@@ -426,6 +455,8 @@ async function main() {
 
   const open = rows.filter((r) => r.status !== "resolved").length;
   console.log(`✓ ${inserted.length} requests (${open} open) and ${events.length} timeline events`);
+  console.log("\nDemo accounts (sign in at /login):");
+  console.table(DEMO_ACCOUNTS.map((a) => ({ role: a.role, name: a.name, email: a.email, password: demoPassword() })));
   console.log("\nDone! Start the app with: npm run dev");
 }
 

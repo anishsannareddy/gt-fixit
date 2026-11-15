@@ -25,6 +25,8 @@ export type User = {
   name: string;
   role: Role;
   title: string | null;
+  /** Sign-in email (null for seeded background reporters, who have no login). */
+  email: string | null;
   is_demo: boolean;
 };
 

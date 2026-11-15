@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
-import { getCurrentUser } from "@/lib/demo-auth";
+import { getCurrentUser } from "@/lib/auth";
 import { AppShell } from "@/components/shell/AppShell";
 import { MotionProvider } from "@/components/ui/Motion";
 import { ToastProvider } from "@/components/ui/Toast";

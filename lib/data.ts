@@ -21,13 +21,13 @@ export async function getBuildings(): Promise<Building[]> {
 
 export async function getDemoUsers(): Promise<User[]> {
   return must(
-    await db().from("users").select("id, name, role, title, is_demo").eq("is_demo", true).order("name"),
+    await db().from("users").select("id, name, role, title, email, is_demo").eq("is_demo", true).order("name"),
   );
 }
 
 export async function getTechnicians(): Promise<User[]> {
   return must(
-    await db().from("users").select("id, name, role, title, is_demo").eq("role", "technician").order("name"),
+    await db().from("users").select("id, name, role, title, email, is_demo").eq("role", "technician").order("name"),
   );
 }
 

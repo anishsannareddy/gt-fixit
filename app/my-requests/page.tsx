@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireUser } from "@/lib/demo-auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { TICKET_SELECT } from "@/lib/data";
 import { OPEN_STATUSES } from "@/lib/constants";

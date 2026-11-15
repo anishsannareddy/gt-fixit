@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { requireUser } from "@/lib/demo-auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { getBuildings, TICKET_SELECT } from "@/lib/data";
 import { CATEGORIES, OPEN_STATUSES, PRIORITIES, PRIORITY_META, PRIORITY_RANK } from "@/lib/constants";

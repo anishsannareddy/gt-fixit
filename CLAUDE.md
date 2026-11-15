@@ -12,7 +12,7 @@ Campus maintenance app for the Georgia Tech Campus Solutions Challenge. See READ
 
 ## Data & auth
 - All DB access is server-side via `db()` from `lib/supabase/server.ts` (service-role key). Never import it in a Client Component.
-- Demo auth: `requireUser(roles)` from `lib/demo-auth.ts` at the top of every page and server action.
+- Auth: Supabase Auth (email + password, `@supabase/ssr`) for identity; role comes from our `users` table. `requireUser(roles)` from `lib/auth.ts` at the top of every page and server action. Never trust roles from Auth metadata or the client.
 - Status changes go through `updateTicket` in `app/requests/actions.ts`, which writes a `request_events` row. Keep that invariant.
 - Schema: `supabase/schema.sql`. If you change it, update `lib/types.ts` and `scripts/seed.ts`, and tell the user to re-run the SQL in Supabase.
 

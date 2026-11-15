@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/demo-auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { CATEGORIES, PHOTO_BUCKET, PRIORITIES } from "@/lib/constants";
 import type { Priority } from "@/lib/types";
@@ -14,7 +14,7 @@ import type { Priority } from "@/lib/types";
  * Vercel's ~4.5MB request body limit on server functions.
  */
 export async function createPhotoUploadUrl() {
-  await requireUser();
+  await requireUser(["reporter"]);
   const path = `requests/${randomUUID()}.jpg`;
   const { data, error } = await db().storage.from(PHOTO_BUCKET).createSignedUploadUrl(path);
   if (error || !data) return { error: error?.message ?? "Could not prepare upload" } as const;
@@ -24,7 +24,7 @@ export async function createPhotoUploadUrl() {
 export type ReportState = { error?: string; fieldErrors?: Record<string, string> } | undefined;
 
 export async function createRequest(_prev: ReportState, formData: FormData): Promise<ReportState> {
-  const user = await requireUser();
+  const user = await requireUser(["reporter"]);
 
   const get = (k: string) => String(formData.get(k) ?? "").trim();
   const buildingId = Number(get("building_id"));

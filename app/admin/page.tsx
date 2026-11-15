@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { requireUser } from "@/lib/demo-auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { fetchAll, getBuildings, getTechnicians } from "@/lib/data";
 import { computeAnalytics, type AnalyticsRow } from "@/lib/analytics";

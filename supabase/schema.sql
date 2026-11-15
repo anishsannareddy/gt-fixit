@@ -23,13 +23,17 @@ create table buildings (
   osm_id      text unique           -- OpenStreetMap id; links the row to its 3D footprint
 );
 
--- Demo personas (real GT SSO would replace this later)
+-- People. For anyone who can sign in, `id` is their Supabase Auth user id.
+-- ROLES live here, not in Auth: the browser can't read or write this table (RLS on, no policies),
+-- so nobody can promote themselves. Technician/admin rows are only created by `npm run seed`.
+-- Seeded background reporters (fake students who own demo requests) have no login.
 create table users (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
+  email       text unique,
   role        text not null check (role in ('reporter', 'technician', 'admin')),
   title       text,                          -- e.g. "3rd-year CS student", "HVAC Technician"
-  is_demo     boolean not null default false, -- shown on the role-picker screen
+  is_demo     boolean not null default false, -- seeded demo account (listed on the login page when enabled)
   created_at  timestamptz not null default now()
 );
 

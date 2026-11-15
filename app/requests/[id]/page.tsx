@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/demo-auth";
+import { requireUser } from "@/lib/auth";
 import { getTechnicians, getTicket, getTicketEvents } from "@/lib/data";
 import { formatDateTime, formatHours, timeAgo } from "@/lib/format";
 import { AREA_META } from "@/lib/campus/areas";
