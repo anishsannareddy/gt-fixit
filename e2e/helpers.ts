@@ -49,6 +49,14 @@ export async function reportIssue(page: Page, title: string): Promise<number> {
   return id;
 }
 
+/** Delete test requests, then any issue group they leave empty. */
 export async function deleteRequests(ids: number[]) {
-  if (ids.length) await admin().from("requests").delete().in("id", ids);
+  if (!ids.length) return;
+  const sb = admin();
+  const { data } = await sb.from("requests").select("group_id").in("id", ids);
+  await sb.from("requests").delete().in("id", ids);
+  for (const gid of new Set((data ?? []).map((r) => r.group_id as number))) {
+    const { count } = await sb.from("requests").select("id", { count: "exact", head: true }).eq("group_id", gid);
+    if (!count) await sb.from("issue_groups").delete().eq("id", gid);
+  }
 }

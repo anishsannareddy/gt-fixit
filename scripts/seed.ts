@@ -273,15 +273,15 @@ const CLUSTERS: Cluster[] = [
     ],
   },
   {
-    key: "howey-ac",
-    building: /Howey Building$/,
+    key: "klaus-ac",
+    building: /Klaus Advanced Computing/,
     category: "HVAC / Temperature",
-    groupTitle: "Lecture hall L1 too hot",
+    groupTitle: "Lecture hall 1443 too hot",
     ai: ["high", "A full lecture hall over 80°F affects many students at once."],
     extraVotes: 4,
     reports: [
-      { title: "AC not cooling", desc: "Lecture hall L1 is over 80°F during the 11am class.", loc: "Room L1", priority: "high", hoursAgo: 28 },
-      { title: "L1 is really hot", desc: "Room L1 is super hot again today, the AC doesn't seem to be on.", loc: "Room L1", priority: "medium", hoursAgo: 4 },
+      { title: "AC not cooling", desc: "Lecture hall 1443 is over 80°F during the 11am class.", loc: "Room 1443", priority: "high", hoursAgo: 28 },
+      { title: "1443 is really hot", desc: "Room 1443 is super hot again today, the AC doesn't seem to be on.", loc: "Room 1443", priority: "medium", hoursAgo: 4 },
     ],
   },
   {
