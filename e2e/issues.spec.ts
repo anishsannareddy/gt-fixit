@@ -1,16 +1,25 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNTS, admin, deleteRequests, expectToast, reportIssue, signIn } from "./helpers";
 
-// Seeded group: "Ceiling leak in 2nd-floor lounge" in Towers. Dr. Shah (demo.faculty) hasn't voted on it.
-const TOWERS = "Ceiling leak in 2nd-floor lounge";
+// Seeded group: the 2nd-floor lounge ceiling leak in Towers (the biggest group there). Dr. Shah
+// (demo.faculty) hasn't voted on it. Its title can change when the AI merges a new report, so
+// look it up by building and size instead of by title.
+let TOWERS = "";
 
 async function facultyId() {
   const { data } = await admin().from("users").select("id").eq("email", ACCOUNTS.faculty).single();
   return data!.id as string;
 }
 async function towersGroupId() {
-  const { data } = await admin().from("issue_groups").select("id").eq("title", TOWERS).single();
-  return data!.id as number;
+  const sb = admin();
+  const { data: b } = await sb.from("buildings").select("id").ilike("name", "%Towers Residence Hall%").single();
+  const { data } = await sb.from("requests").select("group_id, group:issue_groups(id, title)").eq("building_id", b!.id).in("status", ["submitted", "assigned", "in_progress"]);
+  const size = new Map<number, number>();
+  for (const r of data ?? []) size.set(r.group_id, (size.get(r.group_id) ?? 0) + 1);
+  const [id] = [...size.entries()].sort((a, b) => b[1] - a[1])[0];
+  const g = (data ?? []).find((r) => r.group_id === id)!.group as unknown as { title: string };
+  TOWERS = g.title;
+  return id;
 }
 
 test.beforeAll(async () => {

@@ -7,14 +7,14 @@ import { fetchAll, getBuildings, getTechnicians, getTicket, getTicketEvents, TIC
 import { computeAnalytics } from "@/lib/analytics";
 import { OPEN_STATUSES, PRIORITIES, PRIORITY_META, PRIORITY_RANK, STATUSES, STATUS_META } from "@/lib/constants";
 import { AREAS, AREA_META } from "@/lib/campus/areas";
-import { formatHours, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 import type { TicketWithRelations } from "@/lib/types";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { AdminCampusMap } from "@/components/campus/AdminCampusMap";
 import { AreaBadge, PriorityBadge, StatusBadge } from "@/components/ui/Badge";
 import { EmptyState, KpiTile } from "@/components/ui/Feedback";
 import { FilterSelect } from "@/components/ui/FilterSelect";
-import { ChartIcon, XIcon } from "@/components/ui/Icons";
+import { XIcon } from "@/components/ui/Icons";
 import { PageContainer, PageHeader } from "@/components/ui/Surface";
 import { TicketActions } from "@/components/tickets/TicketActions";
 import { AiTriagePanel } from "@/components/tickets/AiUrgency";
@@ -82,19 +82,12 @@ export default async function CommandCenter(props: PageProps<"/admin">) {
   return (
     <PageContainer className="space-y-5">
       <AutoRefresh />
-      <PageHeader eyebrow="Facilities operations" title="Command Center" subtitle="Live view of every maintenance request on campus.">
-        <Link href="/admin/analytics" className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold hover:bg-navy-50">
-          <ChartIcon className="size-4" /> Analytics
-        </Link>
-      </PageHeader>
+      <PageHeader eyebrow="Facilities operations" title="Command Center" subtitle="Live view of every maintenance request on campus." />
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="Key numbers">
-        <KpiTile label="Open now" value={a.kpis.openNow} />
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Key numbers">
+        <KpiTile label="Open now" value={a.kpis.openNow} sub="Across all buildings" />
         <KpiTile label="Urgent open" value={a.kpis.urgentOpen} tone={a.kpis.urgentOpen ? "alert" : "default"} sub={a.kpis.urgentOpen ? "Needs attention" : "All clear"} />
         <KpiTile label="Unassigned" value={a.kpis.unassigned} sub="Waiting for a tech" />
-        <KpiTile label="Submitted · 30d" value={a.kpis.submitted} change={a.kpis.submittedChange} />
-        <KpiTile label="Resolved · 30d" value={a.kpis.resolved} change={a.kpis.resolvedChange} changeGood={(a.kpis.resolvedChange ?? 0) > 0} />
-        <KpiTile label="Avg. time to fix" value={formatHours(a.kpis.avgResolveHours)} tone="gold" sub={`Median ${formatHours(a.kpis.medianResolveHours)}`} />
       </section>
 
       <Suspense>

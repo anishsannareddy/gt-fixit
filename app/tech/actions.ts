@@ -7,9 +7,9 @@ import { db } from "@/lib/supabase/server";
 import type { Priority, Status } from "@/lib/types";
 import type { ActionResult } from "@/app/requests/actions";
 
-/** Turn Smart Sort on or off for the signed-in technician/admin (saved per user). */
+/** Turn Smart Sort on or off for the signed-in technician (saved per user). Admins don't get Smart Sort. */
 export async function setSmartSort(on: boolean): Promise<ActionResult> {
-  const user = await requireUser(["technician", "admin"]);
+  const user = await requireUser(["technician"]);
   const { error } = await db().from("users").update({ smart_sort: Boolean(on) }).eq("id", user.id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/tech");

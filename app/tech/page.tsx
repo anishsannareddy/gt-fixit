@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { getBuildings, TICKET_SELECT } from "@/lib/data";
-import { OPEN_STATUSES, PRIORITIES, PRIORITY_META, PRIORITY_RANK } from "@/lib/constants";
+import { CATEGORIES, OPEN_STATUSES, PRIORITIES, PRIORITY_META, PRIORITY_RANK } from "@/lib/constants";
 import { AREAS, AREA_META } from "@/lib/campus/areas";
 import type { TicketWithRelations } from "@/lib/types";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -15,8 +15,8 @@ import { FadeIn } from "@/components/ui/Motion";
 import { PageContainer, PageHeader } from "@/components/ui/Surface";
 import { TicketCard } from "@/components/tickets/TicketCard";
 import { TechCardAction } from "./TechCardAction";
+import { SmartSortToggle } from "./SmartSortToggle";
 import { AiUrgency } from "@/components/tickets/AiUrgency";
-import { SparkleIcon } from "@/components/ui/Icons";
 import { aiDisagrees, smartSort } from "@/lib/urgency";
 
 export const metadata: Metadata = { title: "My queue" };
@@ -49,7 +49,7 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
   const affectedBy = new Map<number, number>();
   for (const v of votes ?? []) affectedBy.set(v.group_id, (affectedBy.get(v.group_id) ?? 0) + 1);
   const affected = (t: TicketWithRelations) => affectedBy.get(t.group_id) ?? 1;
-  const smart = Boolean(user.smart_sort);
+  const smart = user.role === "technician" && Boolean(user.smart_sort);
   if (smart) {
     // Smart Sort: AI urgency (or the technician's choice), then students affected, then oldest
     open = smartSort(open, affected);
@@ -67,10 +67,15 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
   const area = str("area");
   const building = str("building");
   const priority = str("priority");
+  const category = str("category");
   const shown = byTab[tab].filter(
-    (t) => (!area || t.area === area) && (!building || String(t.building_id) === building) && (!priority || t.priority === priority),
+    (t) =>
+      (!area || t.area === area) &&
+      (!building || String(t.building_id) === building) &&
+      (!priority || t.priority === priority) &&
+      (!category || t.category === category),
   );
-  const filtered = Boolean(area || building || priority);
+  const filtered = Boolean(area || building || priority || category);
   const urgentWaiting = byTab.unassigned.filter((t) => t.priority === "urgent").length;
   const tabHref = (key: Tab) => {
     const next = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string") as [string, string][]);
@@ -87,11 +92,6 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
         subtitle={`${byTab.mine.length} assigned to you · ${byTab.unassigned.length} waiting for a technician${urgentWaiting ? ` · ${urgentWaiting} urgent` : ""}`}
       />
 
-      {smart && (
-        <p className="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-ink ring-1 ring-gt-gold/60" data-testid="smart-sort-on">
-          <SparkleIcon className="size-3.5" /> Smart Sort on: AI urgency, then students affected, then oldest. Turn it off in your account menu.
-        </p>
-      )}
       <ChipRow label="Queue views">
         {TABS.filter((t) => user.role === "technician" || t.key !== "mine").map((t) => (
           <Chip key={t.key} href={tabHref(t.key)} active={tab === t.key} count={t.key === "resolved" ? undefined : byTab[t.key].length}>
@@ -105,6 +105,13 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
           <FilterSelect param="area" label="Area" options={AREAS.map((a) => ({ value: a, label: AREA_META[a].label }))} />
           <FilterSelect param="priority" label="Priority" options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_META[p].label }))} />
           <FilterSelect
+            param="category"
+            label="Category"
+            className={user.role === "technician" ? undefined : "col-span-2 sm:col-span-1"}
+            options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+          />
+          {user.role === "technician" && <SmartSortToggle key={String(smart)} on={smart} className="sm:order-last" />}
+          <FilterSelect
             param="building"
             label="Building"
             className="col-span-2 sm:col-span-1 sm:max-w-xs"
@@ -112,6 +119,11 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
           />
         </div>
       </Suspense>
+      {smart && (
+        <p className="mt-2 text-xs text-ink-muted" data-testid="smart-sort-on">
+          Smart Sort on: AI-confirmed Urgent and High first, then students affected, then oldest.
+        </p>
+      )}
 
       <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {shown.length === 0 ? (

@@ -19,9 +19,11 @@ test("Smart Sort puts AI-urgent work first, flags disagreements, and saves a one
   await page.goto("/tech?tab=open");
   await expect(page.getByTestId("smart-sort-on")).toHaveCount(0);
 
-  // Turn it on from the account menu
+  // The account menu no longer has it; the switch lives in the filter row
   await page.getByRole("button", { name: /Account menu/ }).click();
-  await page.getByRole("menuitemcheckbox", { name: /Smart Sort/ }).click();
+  await expect(page.getByRole("menu").getByText("Smart Sort")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.getByRole("switch", { name: /Smart Sort/ }).click();
   await expectToast(page, "Smart Sort is on");
   await expect(page.getByTestId("smart-sort-on")).toBeVisible();
 
@@ -48,8 +50,7 @@ test("Smart Sort puts AI-urgent work first, flags disagreements, and saves a one
   await expect(bulbAgain.getByText("AI disagrees")).toBeVisible();
 
   // Off again: the old sort returns and the badges disappear
-  await page.getByRole("button", { name: /Account menu/ }).click();
-  await page.getByRole("menuitemcheckbox", { name: /Smart Sort/ }).click();
+  await page.getByRole("switch", { name: /Smart Sort/ }).click();
   await expectToast(page, "Smart Sort is off");
   await expect(page.getByTestId("smart-sort-on")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^AI:/ })).toHaveCount(0);

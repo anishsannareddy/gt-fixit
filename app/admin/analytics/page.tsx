@@ -135,10 +135,10 @@ export default async function AnalyticsPage(props: PageProps<"/admin/analytics">
                 <AlertIcon className="size-4" /> Recurring hotspots
               </h3>
               <p className="text-xs text-slate-500">Same issue type reported 3+ times in one building</p>
-              <ul className="mt-2 space-y-1.5 text-sm">
+              <ul className="mt-2 max-h-72 space-y-2 overflow-y-auto pr-1 text-sm" tabIndex={0} aria-label="Recurring hotspots">
                 {a.hotspots.map((h) => (
-                  <li key={h.building + h.category} className="flex gap-2">
-                    <span className="min-w-0 flex-1 truncate text-slate-700">
+                  <li key={h.building + h.category} className="flex items-start gap-2">
+                    <span className="min-w-0 flex-1 break-words text-slate-700">
                       <span className="font-medium text-slate-900">{h.building}</span> · {h.category}
                     </span>
                     <span className="font-semibold tabular-nums">{h.value}</span>
