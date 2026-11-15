@@ -2,7 +2,6 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { CATEGORIES, PHOTO_BUCKET, PRIORITIES } from "@/lib/constants";
@@ -21,7 +20,7 @@ export async function createPhotoUploadUrl() {
   return { path: data.path, token: data.token } as const;
 }
 
-export type ReportState = { error?: string; fieldErrors?: Record<string, string> } | undefined;
+export type ReportState = { error?: string; fieldErrors?: Record<string, string>; created?: { id: number } } | undefined;
 
 export async function createRequest(_prev: ReportState, formData: FormData): Promise<ReportState> {
   const user = await requireUser(["reporter"]);
@@ -81,6 +80,7 @@ export async function createRequest(_prev: ReportState, formData: FormData): Pro
 
   revalidatePath("/my-requests");
   revalidatePath("/tech");
-  revalidatePath("/admin");
-  redirect(`/requests/${data.id}?new=1`);
+  revalidatePath("/admin", "layout");
+  // The report sheet shows a success screen with a link to the new request.
+  return { created: { id: data.id } };
 }

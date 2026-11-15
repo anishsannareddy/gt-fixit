@@ -15,14 +15,15 @@ export const NAV: Record<Role, Item[]> = {
   ],
   technician: [{ href: "/tech", label: "My queue", Icon: WrenchIcon }],
   admin: [
-    { href: "/admin", label: "Command Center", Icon: ChartIcon },
-    { href: "/tech", label: "All requests", Icon: WrenchIcon },
+    { href: "/admin", label: "Command Center", Icon: MapIcon },
+    { href: "/admin/analytics", label: "Analytics", Icon: ChartIcon },
   ],
 };
 
 function useIsActive() {
   const pathname = usePathname();
-  return (href: string) => pathname === href || pathname.startsWith(href + "/");
+  // "/admin" is exact so it isn't also highlighted on "/admin/analytics"
+  return (href: string) => pathname === href || (href !== "/admin" && pathname.startsWith(href + "/"));
 }
 
 /** Inline links for the top bar on laptops. */

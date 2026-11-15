@@ -1,74 +1,62 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/supabase/server";
 import { getBuildings, TICKET_SELECT } from "@/lib/data";
-import { CATEGORIES, OPEN_STATUSES, PRIORITIES, PRIORITY_META, PRIORITY_RANK } from "@/lib/constants";
+import { OPEN_STATUSES, PRIORITIES, PRIORITY_META, PRIORITY_RANK } from "@/lib/constants";
 import { AREAS, AREA_META } from "@/lib/campus/areas";
-import type { TicketWithRelations, User } from "@/lib/types";
-import { EmptyState, RequestCard } from "@/components/RequestCard";
-import { FilterSelect } from "@/components/FilterSelect";
-import { SubmitButton } from "@/components/SubmitButton";
-import { updateTicket } from "../requests/actions";
+import type { TicketWithRelations } from "@/lib/types";
+import { AutoRefresh } from "@/components/AutoRefresh";
+import { Chip, ChipRow } from "@/components/ui/Chip";
+import { EmptyState } from "@/components/ui/Feedback";
+import { FilterSelect } from "@/components/ui/FilterSelect";
+import { GemCheck, WrenchGem } from "@/components/ui/Illustration";
+import { FadeIn } from "@/components/ui/Motion";
+import { PageContainer, PageHeader } from "@/components/ui/Surface";
+import { TicketCard } from "@/components/tickets/TicketCard";
+import { TechCardAction } from "./TechCardAction";
 
-export const metadata: Metadata = { title: "Maintenance queue" };
+export const metadata: Metadata = { title: "My queue" };
 
 type Tab = "mine" | "unassigned" | "open" | "resolved";
+const TABS: { key: Tab; label: string }[] = [
+  { key: "mine", label: "My work" },
+  { key: "unassigned", label: "Unassigned" },
+  { key: "open", label: "All open" },
+  { key: "resolved", label: "Resolved" },
+];
 
 export default async function TechQueuePage(props: PageProps<"/tech">) {
   const user = await requireUser(["technician", "admin"]);
   const sp = await props.searchParams;
   const str = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : "");
-
-  const tabs: { key: Tab; label: string }[] =
-    user.role === "technician"
-      ? [
-          { key: "mine", label: "My work" },
-          { key: "unassigned", label: "Unassigned" },
-          { key: "open", label: "All open" },
-          { key: "resolved", label: "Resolved" },
-        ]
-      : [
-          { key: "unassigned", label: "Unassigned" },
-          { key: "open", label: "All open" },
-          { key: "resolved", label: "Resolved" },
-        ];
-  const tab = (tabs.find((t) => t.key === str("tab"))?.key ?? tabs[0].key) as Tab;
+  const tab: Tab = TABS.find((t) => t.key === str("tab"))?.key ?? (user.role === "technician" ? "mine" : "unassigned");
 
   const [openRes, resolvedRes, buildings] = await Promise.all([
     db().from("requests").select(TICKET_SELECT).in("status", OPEN_STATUSES),
-    db().from("requests").select(TICKET_SELECT).eq("status", "resolved").order("resolved_at", { ascending: false }).limit(50),
+    db().from("requests").select(TICKET_SELECT).eq("status", "resolved").order("resolved_at", { ascending: false }).limit(40),
     getBuildings(),
   ]);
   if (openRes.error) throw new Error(openRes.error.message);
   if (resolvedRes.error) throw new Error(resolvedRes.error.message);
   const open = (openRes.data ?? []) as TicketWithRelations[];
-  const resolved = (resolvedRes.data ?? []) as TicketWithRelations[];
-
-  // Urgent first, then oldest first — what a dispatcher would want
+  // Urgent first, then oldest first
   open.sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.created_at.localeCompare(b.created_at));
 
   const byTab: Record<Tab, TicketWithRelations[]> = {
     mine: open.filter((t) => t.assignee_id === user.id),
     unassigned: open.filter((t) => t.status === "submitted"),
     open,
-    resolved,
+    resolved: (resolvedRes.data ?? []) as TicketWithRelations[],
   };
-
-  const building = str("building");
-  const category = str("category");
-  const priority = str("priority");
   const area = str("area");
+  const building = str("building");
+  const priority = str("priority");
   const shown = byTab[tab].filter(
-    (t) =>
-      (!area || t.area === area) &&
-      (!building || String(t.building_id) === building) &&
-      (!category || t.category === category) &&
-      (!priority || t.priority === priority),
+    (t) => (!area || t.area === area) && (!building || String(t.building_id) === building) && (!priority || t.priority === priority),
   );
-
-  const urgentUnassigned = byTab.unassigned.filter((t) => t.priority === "urgent").length;
+  const filtered = Boolean(area || building || priority);
+  const urgentWaiting = byTab.unassigned.filter((t) => t.priority === "urgent").length;
   const tabHref = (key: Tab) => {
     const next = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string") as [string, string][]);
     next.set("tab", key);
@@ -76,103 +64,63 @@ export default async function TechQueuePage(props: PageProps<"/tech">) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-32 md:px-6 md:pt-10 md:pb-16">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
-            {user.role === "technician" ? "My queue" : "All requests"}
-          </h1>
-          <p className="mt-2 text-ink-muted">
-            {byTab.unassigned.length} waiting for a technician
-            {urgentUnassigned > 0 && (
-              <span className="font-semibold text-red-700"> · {urgentUnassigned} urgent</span>
-            )}
-            {user.role === "technician" && <> · {byTab.mine.length} assigned to you</>}
-          </p>
-        </div>
-      </div>
+    <PageContainer>
+      <AutoRefresh />
+      <PageHeader
+        eyebrow={user.role === "technician" ? `Hi, ${user.name.split(" ")[0]}` : "All requests"}
+        title={user.role === "technician" ? "My queue" : "Request queue"}
+        subtitle={`${byTab.mine.length} assigned to you · ${byTab.unassigned.length} waiting for a technician${urgentWaiting ? ` · ${urgentWaiting} urgent` : ""}`}
+      />
 
-      <div className="-mx-4 mt-5 overflow-x-auto px-4">
-        <div className="flex gap-2" role="tablist" aria-label="Queue views">
-          {tabs.map((t) => (
-            <Link
-              key={t.key}
-              href={tabHref(t.key)}
-              role="tab"
-              aria-selected={tab === t.key}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-                tab === t.key ? "bg-gt-navy text-white" : "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              {t.label} <span className="opacity-70">{t.key === "resolved" ? "" : byTab[t.key].length}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
+      <ChipRow label="Queue views">
+        {TABS.filter((t) => user.role === "technician" || t.key !== "mine").map((t) => (
+          <Chip key={t.key} href={tabHref(t.key)} active={tab === t.key} count={t.key === "resolved" ? undefined : byTab[t.key].length}>
+            {t.label}
+          </Chip>
+        ))}
+      </ChipRow>
 
       <Suspense>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <FilterSelect param="area" label="Area" options={AREAS.map((a) => ({ value: a, label: AREA_META[a].label }))} />
+          <FilterSelect param="priority" label="Priority" options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_META[p].label }))} />
           <FilterSelect
             param="building"
             label="Building"
+            className="col-span-2 sm:col-span-1 sm:max-w-xs"
             options={buildings.filter((b) => !area || b.area === area).map((b) => ({ value: String(b.id), label: b.name }))}
           />
-          <FilterSelect param="category" label="Category" options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
-          <FilterSelect param="priority" label="Priority" options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_META[p].label }))} />
         </div>
       </Suspense>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-5 grid gap-3 lg:grid-cols-2">
         {shown.length === 0 ? (
           <div className="lg:col-span-2">
-            <EmptyState title={tab === "mine" ? "Nothing assigned to you" : "No requests match"}>
-              {tab === "mine" ? "Check the Unassigned tab to pick up new work." : "Try clearing a filter."}
+            <EmptyState
+              title={filtered ? "No requests match these filters" : tab === "mine" ? "Nothing assigned to you" : tab === "unassigned" ? "Everything has been picked up" : "Nothing here"}
+              art={tab === "mine" ? <WrenchGem /> : <GemCheck />}
+            >
+              {filtered ? "Try clearing a filter." : tab === "mine" ? "Open the Unassigned tab to pick up new work." : "New requests will show up here automatically."}
             </EmptyState>
           </div>
         ) : (
-          shown.map((t) => (
-            <RequestCard key={t.id} ticket={t} showAssignee={tab !== "mine"} showReporter actions={<QuickActions ticket={t} user={user} />} />
+          shown.map((t, i) => (
+            <FadeIn key={t.id} index={i}>
+              <TicketCard
+                ticket={t}
+                showReporter
+                showAssignee={tab !== "mine"}
+                footer={
+                  // Technicians get a one-tap next step; admins manage requests from the Command Center drawer.
+                  user.role === "technician" && (t.status === "submitted" || (t.assignee_id === user.id && t.status !== "resolved")) ? (
+                    <TechCardAction id={t.id} title={t.title} status={t.status} mine={t.assignee_id === user.id} />
+                  ) : undefined
+                }
+              />
+            </FadeIn>
           ))
         )}
       </div>
-    </div>
-  );
-}
-
-/** One-tap actions right on the card. Resolution notes can be added on the detail page. */
-function QuickActions({ ticket, user }: { ticket: TicketWithRelations; user: User }) {
-  const isTech = user.role === "technician";
-  const canWork = user.role === "admin" || ticket.assignee_id === user.id;
-  const btn = "btn-outline min-h-9 px-3 py-1.5";
-
-  const actions: { action: string; label: string; pending: string; cls?: string }[] = [];
-  if (isTech && ticket.status === "submitted") actions.push({ action: "claim", label: "Claim", pending: "Claiming…", cls: "btn-primary min-h-9 px-3 py-1.5" });
-  if (canWork && ticket.status === "assigned") actions.push({ action: "start", label: "Start work", pending: "Starting…" });
-  if (canWork && (ticket.status === "assigned" || ticket.status === "in_progress"))
-    actions.push({ action: "resolve", label: "Resolve", pending: "Resolving…", cls: "btn-gold min-h-9 px-3 py-1.5" });
-
-  if (actions.length === 0) {
-    if (user.role === "admin" && ticket.status === "submitted") {
-      return (
-        <Link href={`/requests/${ticket.id}`} className={btn}>
-          Assign technician →
-        </Link>
-      );
-    }
-    return null;
-  }
-  return (
-    <>
-      {actions.map((a) => (
-        <form key={a.action} action={updateTicket}>
-          <input type="hidden" name="id" value={ticket.id} />
-          <input type="hidden" name="action" value={a.action} />
-          <SubmitButton className={a.cls ?? btn} pendingLabel={a.pending}>
-            {a.label}
-          </SubmitButton>
-        </form>
-      ))}
-    </>
+    </PageContainer>
   );
 }

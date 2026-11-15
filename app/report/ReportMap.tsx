@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { motion } from "motion/react";
+import Link from "next/link";
+import { useCallback, useMemo, useState } from "react";
 import { BuildingSearch } from "@/components/campus/BuildingSearch";
 import { CampusCanvas } from "@/components/campus/CampusCanvas";
 import { AreaBadge } from "@/components/ui/Badge";
-import { buttonClass } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
+import { GemCheck } from "@/components/ui/Illustration";
 import { Sheet } from "@/components/ui/Sheet";
 import { useIsDesktop } from "@/components/ui/useMediaQuery";
 import { AREA_META } from "@/lib/campus/areas";
@@ -15,13 +18,16 @@ import { REPORT_FORM_ID, ReportForm } from "./ReportForm";
 export function ReportMap({ buildings }: { buildings: Building[] }) {
   const [selected, setSelected] = useState<Building | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [createdId, setCreatedId] = useState<number | null>(null);
   const desktop = useIsDesktop();
   const byOsmId = useMemo(() => new Map(buildings.filter((b) => b.osm_id).map((b) => [b.osm_id!, b])), [buildings]);
 
   function choose(b: Building | null) {
     setBusy(null);
+    setCreatedId(null);
     setSelected(b);
   }
+  const onCreated = useCallback((id: number) => setCreatedId(id), []);
 
   return (
     <div className="relative flex-1">
@@ -46,8 +52,8 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
       <div className="pointer-events-none relative z-10 mx-auto max-w-xl px-4 pt-4">
         <BuildingSearch buildings={buildings} onPick={choose} className="pointer-events-auto" />
         {!selected && (
-          <p className="mt-3 text-center text-sm font-medium text-ink-muted [text-shadow:0_1px_8px_rgb(0_17_31)]">
-            Tap a highlighted building to report a problem there
+          <p className="mx-auto mt-3 w-fit rounded-full bg-white/90 px-4 py-1.5 text-center text-sm font-medium text-ink shadow-sm ring-1 ring-line">
+            Tap a building, or search, to report a problem there
           </p>
         )}
       </div>
@@ -55,15 +61,19 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
       <Sheet
         open={selected !== null}
         onClose={() => choose(null)}
-        eyebrow="Report an issue"
+        eyebrow={createdId ? "Request sent" : "Report an issue"}
         title={selected?.name ?? ""}
         footer={
-          <button type="submit" form={REPORT_FORM_ID} disabled={busy !== null} className={buttonClass({ variant: "gold", size: "lg", full: true })}>
-            {busy ?? "Submit request"}
-          </button>
+          createdId ? undefined : (
+            <button type="submit" form={REPORT_FORM_ID} disabled={busy !== null} className={buttonClass({ variant: "gold", size: "lg", full: true })}>
+              {busy ?? "Submit request"}
+            </button>
+          )
         }
       >
-        {selected && (
+        {selected && createdId ? (
+          <Success id={createdId} building={selected} onAnother={() => choose(null)} />
+        ) : selected ? (
           <>
             <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
               <AreaBadge area={selected.area} />
@@ -71,10 +81,35 @@ export function ReportMap({ buildings }: { buildings: Building[] }) {
               <span>Goes to the {AREA_META[selected.area].label} maintenance team</span>
             </div>
             {/* key = start a fresh form when a different building is picked */}
-            <ReportForm key={selected.id} building={selected} onBusy={setBusy} />
+            <ReportForm key={selected.id} building={selected} onBusy={setBusy} onCreated={onCreated} />
           </>
-        )}
+        ) : null}
       </Sheet>
+    </div>
+  );
+}
+
+function Success({ id, building, onAnother }: { id: number; building: Building; onAnother: () => void }) {
+  return (
+    <div className="flex flex-col items-center py-4 text-center" role="status">
+      <motion.div initial={{ scale: 0.4, rotate: -12, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }}>
+        <GemCheck className="size-32" />
+      </motion.div>
+      <h3 className="mt-2 font-display text-2xl font-bold">Thanks, it&apos;s reported!</h3>
+      <p className="mt-1 text-ink-muted">
+        Request <span className="font-mono font-semibold text-ink">#{id}</span> went to the {AREA_META[building.area].label} maintenance team. We&apos;ll keep its status up to date.
+      </p>
+      <div className="mt-6 flex w-full flex-col gap-2">
+        <Link href={`/requests/${id}`} className={buttonClass({ variant: "gold", size: "lg", full: true })}>
+          View request
+        </Link>
+        <Button size="lg" full onClick={onAnother}>
+          Report another issue
+        </Button>
+        <Link href="/my-requests" className="mt-1 text-sm font-semibold text-ink underline decoration-gt-gold decoration-2 underline-offset-4">
+          See all my requests
+        </Link>
+      </div>
     </div>
   );
 }

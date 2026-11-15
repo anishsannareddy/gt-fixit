@@ -39,7 +39,16 @@ const CATEGORY_SHORT: Partial<Record<Category, string>> = {
  * The submit button lives in the sheet footer and targets this form by id.
  * `onBusy` tells the parent when a photo upload or save is running, so it can label that button.
  */
-export function ReportForm({ building, onBusy }: { building: Building; onBusy: (label: string | null) => void }) {
+export function ReportForm({
+  building,
+  onBusy,
+  onCreated,
+}: {
+  building: Building;
+  onBusy: (label: string | null) => void;
+  /** Called with the new request id once it's saved. */
+  onCreated: (id: number) => void;
+}) {
   const [state, formAction, saving] = useActionState<ReportState, FormData>(createRequest, undefined);
   const [photo, setPhoto] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -74,10 +83,12 @@ export function ReportForm({ building, onBusy }: { building: Building; onBusy: (
     startTransition(() => formAction(formData));
   }
 
-  // The action redirects on success; if it comes back with errors instead, re-enable the submit button.
+  // When the save finishes: re-enable the submit button, and show the success screen if it worked.
   useEffect(() => {
-    if (!saving && state) onBusy(null);
-  }, [saving, state, onBusy]);
+    if (saving || !state) return;
+    onBusy(null);
+    if (state.created) onCreated(state.created.id);
+  }, [saving, state, onBusy, onCreated]);
 
   return (
     <form id={REPORT_FORM_ID} onSubmit={handleSubmit} noValidate className="space-y-5">

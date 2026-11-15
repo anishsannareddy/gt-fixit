@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "typecheck": "next typegen && tsc --noEmit",
-    "check:contrast": "tsx scripts/check-contrast.ts"
+    "check:contrast": "tsx scripts/check-contrast.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
