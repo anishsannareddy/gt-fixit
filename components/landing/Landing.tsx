@@ -24,7 +24,7 @@ export function Landing({ notice }: { notice?: ReactNode }) {
       />
 
       <header className="relative z-10 flex items-center justify-between px-5 pt-5 md:px-10 md:pt-8">
-        <Logo />
+        <Logo size="lg" />
         <span className="hidden rounded-full border border-line bg-slate-100 px-3 py-1 text-xs font-medium text-ink-muted backdrop-blur sm:block">
           Georgia Tech Campus Solutions Challenge
         </span>
