@@ -28,6 +28,8 @@ export type User = {
   /** Sign-in email (null for seeded background reporters, who have no login). */
   email: string | null;
   is_demo: boolean;
+  /** Technician queue: sort by AI urgency (saved per user). */
+  smart_sort?: boolean;
 };
 
 /** A maintenance request. (Named Ticket so it doesn't clash with the built-in `Request` type.) */
@@ -45,9 +47,34 @@ export type Ticket = {
   reporter_id: string;
   assignee_id: string | null;
   photo_url: string | null;
+  /** Issue group (duplicate reports of one problem share a group). */
+  group_id: number;
+  /** AI suggestion, set once at submission. Never replaces the reporter's `priority`. */
+  ai_urgency: Priority | null;
+  ai_reason: string | null;
+  ai_category: string | null;
+  ai_safety: boolean;
+  ai_status: AiStatus;
+  ai_model: string | null;
+  ai_at: string | null;
+  /** Technician's accepted/overridden urgency. */
+  triage_urgency: Priority | null;
+  triage_by: string | null;
+  triage_at: string | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
+};
+
+export type AiStatus = "pending" | "done" | "fallback";
+
+export type IssueGroup = {
+  id: number;
+  building_id: number;
+  category: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
 };
 
 /** Ticket joined with the related rows most screens need. */
