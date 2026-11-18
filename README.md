@@ -1,5 +1,5 @@
 # GT FixIt 🛠️
-
+Made By: Anish Sannareddy, Anik Parikh, Arjun Shah, Pareen Sharma
 **Georgia Tech Campus Solutions Challenge** — an all-in-one maintenance app for Georgia Tech.
 
 - **Students & faculty** sign in with their @gatech.edu email, pick a building on a 3D campus map, report issues in any building or dorm (with a photo) and track them. **Active issues** shows what's already reported around campus; tap **Me too** instead of filing a duplicate.
